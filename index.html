@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,6 +11,13 @@
         <canvas id="renderCanvas"></canvas>
     </div>
 
-    <script src="game_zelda.js"></script>
+    <script type="module">
+        import { initGame } from './src/game.js';
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initGame);
+        } else {
+            initGame();
+        }
+    </script>
 </body>
 </html>
