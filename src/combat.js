@@ -52,6 +52,28 @@ export function updateCombat(gs, dt) {
             const distance = Math.sqrt(distX * distX + distY * distY);
 
             if (distance < 0.8) {
+                // Invincibility potion absorbs hits
+                if (gs.activeEffects.invincibility.active) {
+                    gs.activeEffects.invincibility.hitsRemaining--;
+                    gs.player.invincible = true;
+                    gs.player.invincibleTimer = 30;
+                    gs.currentDialogue = `💫 Hit absorbed! (${gs.activeEffects.invincibility.hitsRemaining} left)`;
+                    gs.dialogueTimer = 0;
+
+                    if (gs.activeEffects.invincibility.hitsRemaining <= 0) {
+                        gs.activeEffects.invincibility.active = false;
+                        gs.currentDialogue = '💫 Invincibility wore off!';
+                        gs.dialogueTimer = 0;
+                    }
+
+                    // Knockback still applies
+                    if (distance > 0) {
+                        gs.player.velocityX = (distX / distance) * 0.2;
+                        gs.player.velocityY = (distY / distance) * 0.2;
+                    }
+                    return;
+                }
+
                 if (gs.player.isBlocking && gs.weapons['Rusty Shield'] && !gs.player.shieldBroken) {
                     const damageToShield = enemy.damage * 20;
                     gs.player.shieldDurability -= damageToShield;

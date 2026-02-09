@@ -2,7 +2,7 @@
 // PLAYER - Movement, physics, collision, animation
 // ========================================
 import {
-    SOLID_TILES, NPC_SOLID_TILES,
+    SOLID_TILES, NPC_SOLID_TILES, TILE_WATER,
     COLLISION_RADIUS, WALL_BOUNCE, VELOCITY_THRESHOLD, DIAGONAL_FACTOR,
     GRAVITY, JUMP_VISUAL_SCALE
 } from './constants.js';
@@ -28,8 +28,12 @@ export function canWalkOn(gs, x, y) {
         }
 
         const tile = gs.map[tileY][tileX];
-        if (SOLID_TILES.has(tile)) {
-            return false;
+        if (gs.insideHouse) {
+            // Inside houses: walls and furniture are solid
+            if (SOLID_TILES.has(tile)) return false;
+        } else {
+            // Outside: only water blocks movement
+            if (tile === TILE_WATER) return false;
         }
     }
     return true;

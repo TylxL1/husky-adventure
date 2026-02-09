@@ -7,59 +7,7 @@ import { TILE_SIZE, TILE_WATER, TILE_HOUSE, TILE_FLOWER } from './constants.js';
 // Create enemies on the map
 // ----------------------------------------
 export function createEnemies(gs) {
-    const numEnemies = 15;
-
-    for (let i = 0; i < numEnemies; i++) {
-        let x, y;
-        let validPosition = false;
-        let attempts = 0;
-
-        while (!validPosition && attempts < 100) {
-            x = Math.random() * (gs.mapWidth - 20) + 10;
-            y = Math.random() * (gs.mapHeight - 20) + 10;
-
-            validPosition = true;
-            for (const house of gs.houses) {
-                const distX = Math.abs(x - (house.x + 1.5));
-                const distY = Math.abs(y - (house.y + 1.5));
-                if (distX < 10 && distY < 10) { validPosition = false; break; }
-            }
-
-            if (validPosition) {
-                const tileType = gs.map[Math.floor(y)]?.[Math.floor(x)];
-                if (tileType === TILE_WATER || tileType === TILE_HOUSE || tileType === TILE_FLOWER) {
-                    validPosition = false;
-                }
-            }
-
-            if (validPosition) {
-                const distFromSpawn = Math.sqrt(Math.pow(x - 40, 2) + Math.pow(y - 22, 2));
-                if (distFromSpawn < 15) validPosition = false;
-            }
-
-            attempts++;
-        }
-
-        if (validPosition) {
-            const enemyTypes = ['slime', 'goblin'];
-            const type = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
-
-            gs.enemies.push({
-                x, y, type,
-                health: type === 'slime' ? 3 : 5,
-                maxHealth: type === 'slime' ? 3 : 5,
-                damage: type === 'slime' ? 1 : 2,
-                speed: type === 'slime' ? 0.015 : 0.02,
-                direction: 'down',
-                animFrame: 0, animTimer: 0,
-                moveTimer: Math.random() * 60,
-                aggroRange: type === 'slime' ? 4 : 6,
-                isAggro: false,
-                knockbackX: 0, knockbackY: 0,
-                xpReward: type === 'slime' ? 15 : 25
-            });
-        }
-    }
+    // No roaming enemies — only treasure chest guards are created in createTreasureChest
 }
 
 // ----------------------------------------
@@ -79,17 +27,12 @@ export function createTreasureChest(gs) {
 
     gs.treasureChest = { x: chestX, y: chestY, opened: false };
 
-    // Guard enemies around the chest
-    const guardPositions = [
+    // Goblin guards
+    const goblinPositions = [
         { x: chestX - 3, y: chestY },
-        { x: chestX + 3, y: chestY },
-        { x: chestX, y: chestY - 3 },
-        { x: chestX, y: chestY + 3 },
-        { x: chestX - 2, y: chestY - 2 },
-        { x: chestX + 2, y: chestY + 2 }
+        { x: chestX + 3, y: chestY }
     ];
-
-    guardPositions.forEach(pos => {
+    goblinPositions.forEach(pos => {
         gs.enemies.push({
             x: pos.x, y: pos.y,
             type: 'goblin',
@@ -101,6 +44,27 @@ export function createTreasureChest(gs) {
             aggroRange: 5, isAggro: false,
             knockbackX: 0, knockbackY: 0,
             xpReward: 40
+        });
+    });
+
+    // Evil green slimes
+    const slimePositions = [
+        { x: chestX, y: chestY - 3 },
+        { x: chestX - 2, y: chestY + 2 },
+        { x: chestX + 2, y: chestY + 2 }
+    ];
+    slimePositions.forEach(pos => {
+        gs.enemies.push({
+            x: pos.x, y: pos.y,
+            type: 'slime',
+            health: 4, maxHealth: 4,
+            damage: 2, speed: 0.018,
+            direction: 'down',
+            animFrame: 0, animTimer: 0,
+            moveTimer: Math.random() * 60,
+            aggroRange: 5, isAggro: false,
+            knockbackX: 0, knockbackY: 0,
+            xpReward: 30
         });
     });
 }
@@ -135,8 +99,10 @@ export function updateEnemies(gs, dt) {
         const distY = gs.player.y - enemy.y;
         const distance = Math.sqrt(distX * distX + distY * distY);
 
-        // Aggro logic
-        if (distance < enemy.aggroRange) {
+        // Aggro logic (invisibility potion prevents aggro)
+        if (gs.activeEffects.invisibility.active) {
+            enemy.isAggro = false;
+        } else if (distance < enemy.aggroRange) {
             enemy.isAggro = true;
         } else if (distance > enemy.aggroRange * 2) {
             enemy.isAggro = false;
@@ -147,15 +113,34 @@ export function updateEnemies(gs, dt) {
 
         if (enemy.isAggro && distance > 0.8) {
             // Chase player
-            const dirX = distX / distance;
-            const dirY = distY / distance;
-            enemy.x += dirX * enemy.speed * dt;
-            enemy.y += dirY * enemy.speed * dt;
+            let moveX = distX / distance;
+            let moveY = distY / distance;
 
-            if (Math.abs(dirX) > Math.abs(dirY)) {
-                enemy.direction = dirX > 0 ? 'right' : 'left';
+            // Separation: push away from other enemies
+            const separationDist = 2.0;
+            gs.enemies.forEach(other => {
+                if (other === enemy) return;
+                const sepX = enemy.x - other.x;
+                const sepY = enemy.y - other.y;
+                const sepDist = Math.sqrt(sepX * sepX + sepY * sepY);
+                if (sepDist < separationDist && sepDist > 0.01) {
+                    const force = (separationDist - sepDist) / separationDist;
+                    moveX += (sepX / sepDist) * force * 1.5;
+                    moveY += (sepY / sepDist) * force * 1.5;
+                }
+            });
+
+            // Normalize and apply movement
+            const moveLen = Math.sqrt(moveX * moveX + moveY * moveY);
+            if (moveLen > 0) {
+                enemy.x += (moveX / moveLen) * enemy.speed * dt;
+                enemy.y += (moveY / moveLen) * enemy.speed * dt;
+            }
+
+            if (Math.abs(moveX) > Math.abs(moveY)) {
+                enemy.direction = moveX > 0 ? 'right' : 'left';
             } else {
-                enemy.direction = dirY > 0 ? 'down' : 'up';
+                enemy.direction = moveY > 0 ? 'down' : 'up';
             }
         } else if (enemy.moveTimer % 90 < dt && !enemy.isAggro) {
             enemy.direction = ['up', 'down', 'left', 'right'][Math.floor(Math.random() * 4)];

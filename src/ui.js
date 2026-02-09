@@ -349,14 +349,6 @@ function drawDialogue(ctx, gs) {
         );
     });
 
-    // Close hint
-    ctx.font = '14px monospace';
-    ctx.fillStyle = '#aaaaaa';
-    ctx.fillText(
-        'Press E to close',
-        gs.canvas.width / 2 - boxWidth / 2 + 20,
-        gs.canvas.height - 30
-    );
 }
 
 // ----------------------------------------
@@ -372,7 +364,9 @@ function drawInteractionPrompt(ctx, gs) {
         const distance = Math.sqrt(distX * distX + distY * distY);
 
         if (distance < 2) {
-            if (gs.inventory['Treasure Key']) {
+            if (gs.enemies.length > 0) {
+                message = '⚔️ Defeat all enemies first!';
+            } else if (gs.inventory['Treasure Key']) {
                 message = '🔑 Press E to open the treasure chest';
             } else {
                 message = '🔒 The chest is locked...';
@@ -882,6 +876,7 @@ function drawInventory(ctx, gs) {
         ctx.fillText('~ No items ~', invX + 40, yOffset);
     } else {
         const foodItemsCount = Object.entries(gs.food).length;
+        let potionIndex = 0;
 
         ctx.font = 'bold 17px monospace';
         items.forEach(([itemName, quantity], index) => {
@@ -894,7 +889,7 @@ function drawInventory(ctx, gs) {
             else if (itemName === 'Invincibility Potion') { icon = '💫'; isPotion = true; }
             else if (itemName === 'Treasure Key') { icon = '🔑'; }
 
-            const globalIndex = foodItemsCount + index + 1;
+            const globalIndex = foodItemsCount + potionIndex + 1;
 
             ctx.fillStyle = 'rgba(170, 100, 255, 0.08)';
             ctx.fillRect(invX + 30, yOffset - 25, invWidth - 60, 45);
@@ -913,6 +908,7 @@ function drawInventory(ctx, gs) {
             ctx.fillStyle = '#ffffff';
             if (isPotion) {
                 ctx.fillText(`[${globalIndex}] ${itemName}`, invX + 90, yOffset);
+                potionIndex++;
             } else {
                 ctx.fillText(itemName, invX + 90, yOffset);
             }

@@ -24,6 +24,11 @@ function handleInteraction(gs) {
         const distance = Math.sqrt(distX * distX + distY * distY);
 
         if (distance < 2) {
+            if (gs.enemies.length > 0) {
+                gs.currentDialogue = "⚔️ Defeat all enemies before opening the chest!";
+                gs.dialogueTimer = 0;
+                return;
+            }
             if (gs.inventory['Treasure Key']) {
                 gs.treasureChest.opened = true;
                 gs.treasureFound = true;
