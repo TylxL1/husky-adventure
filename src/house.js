@@ -123,265 +123,285 @@ export function createHouseInterior(gs, type) {
     // Decorate based on house type
     switch (type) {
         case 'player':
-            // Bed (top left) - 2x2
+            // Bed 2x3 (top left, medium-large)
             gs.map[2][2] = TILE_BED; gs.map[2][3] = TILE_BED;
             gs.map[3][2] = TILE_BED; gs.map[3][3] = TILE_BED;
-            // Chest (top right)
-            gs.map[2][15] = TILE_CHEST;
-            // Table + 4 chairs (center)
-            gs.map[6][8] = TILE_TABLE; gs.map[6][9] = TILE_TABLE;
-            gs.map[7][8] = TILE_TABLE; gs.map[7][9] = TILE_TABLE;
-            gs.map[5][8] = TILE_CHAIR; gs.map[8][9] = TILE_CHAIR;
-            gs.map[6][7] = TILE_CHAIR; gs.map[7][10] = TILE_CHAIR;
-            // Sofa (bottom left)
-            gs.map[10][2] = TILE_SOFA; gs.map[10][3] = TILE_SOFA;
-            // Shelf (bottom right)
-            gs.map[10][15] = TILE_SHELF;
+            gs.map[4][2] = TILE_BED; gs.map[4][3] = TILE_BED;
+            // 2 bookshelves side by side (top right, 2x2)
+            gs.map[2][14] = TILE_BOOKSHELF; gs.map[2][15] = TILE_BOOKSHELF;
+            gs.map[3][14] = TILE_BOOKSHELF; gs.map[3][15] = TILE_BOOKSHELF;
+            // Large table 2x3 (center) + 4 chairs
+            gs.map[6][8] = TILE_TABLE; gs.map[6][9] = TILE_TABLE; gs.map[6][10] = TILE_TABLE;
+            gs.map[7][8] = TILE_TABLE; gs.map[7][9] = TILE_TABLE; gs.map[7][10] = TILE_TABLE;
+            gs.map[5][9] = TILE_CHAIR; gs.map[8][9] = TILE_CHAIR;
+            gs.map[6][7] = TILE_CHAIR; gs.map[7][11] = TILE_CHAIR;
+            // 3 chests along bottom-right wall
+            gs.map[10][14] = TILE_CHEST; gs.map[10][15] = TILE_CHEST; gs.map[10][16] = TILE_CHEST;
+            // Sofa 1x3 (bottom left, medium-wide)
+            gs.map[10][2] = TILE_SOFA; gs.map[10][3] = TILE_SOFA; gs.map[10][4] = TILE_SOFA;
             break;
 
         case 'farmer':
-            // Bed
-            gs.map[2][2] = TILE_BED; gs.map[2][3] = TILE_BED;
-            gs.map[3][2] = TILE_BED; gs.map[3][3] = TILE_BED;
-            // Workbench
+            // === FARM SHOP — produce crates, workbench, counter ===
+            // Vegetable crates left wall (behind counter)
+            gs.map[2][2] = TILE_VEGETABLE_CRATE; gs.map[3][2] = TILE_VEGETABLE_CRATE;
+            gs.map[4][2] = TILE_CARROT_CRATE;
+            // Workbench right wall (behind counter)
             gs.map[2][14] = TILE_WORKBENCH; gs.map[2][15] = TILE_WORKBENCH;
-            // Vegetable crates
-            gs.map[2][10] = TILE_VEGETABLE_CRATE; gs.map[3][10] = TILE_CARROT_CRATE;
-            gs.map[2][11] = TILE_VEGETABLE_CRATE;
-            // Table
-            gs.map[7][7] = TILE_TABLE; gs.map[7][8] = TILE_TABLE;
-            gs.map[8][7] = TILE_CHAIR; gs.map[6][8] = TILE_CHAIR;
-            // Tool chest
-            gs.map[6][2] = TILE_CHEST;
+            gs.map[3][14] = TILE_CARROT_CRATE; gs.map[3][15] = TILE_VEGETABLE_CRATE;
+            // Counter with center gap
+            gs.map[5][3] = TILE_COUNTER; gs.map[5][4] = TILE_COUNTER; gs.map[5][5] = TILE_COUNTER;
+            gs.map[5][6] = TILE_COUNTER; gs.map[5][7] = TILE_COUNTER;
+            gs.map[5][10] = TILE_COUNTER; gs.map[5][11] = TILE_COUNTER;
+            gs.map[5][12] = TILE_COUNTER; gs.map[5][13] = TILE_COUNTER; gs.map[5][14] = TILE_COUNTER;
+            // Chest (behind counter)
+            gs.map[3][8] = TILE_CHEST;
+            // Front produce displays
+            gs.map[8][3] = TILE_VEGETABLE_CRATE; gs.map[9][3] = TILE_CARROT_CRATE;
+            gs.map[8][14] = TILE_VEGETABLE_CRATE; gs.map[9][14] = TILE_CARROT_CRATE;
             // Barrels
-            gs.map[10][14] = TILE_BARREL; gs.map[10][3] = TILE_BARREL;
-            // NPC farmer
+            gs.map[8][6] = TILE_BARREL; gs.map[8][11] = TILE_BARREL;
+            // NPC farmer (behind counter)
             gs.npcs.push({
-                x: 12, y: 8, type: 'farmer', direction: 'down',
+                x: 8, y: 3, type: 'farmer', direction: 'down',
                 animFrame: 0, animTimer: 0, moveTimer: 0, idleTime: 999999
             });
             break;
 
         case 'fisher':
-            // Counter with passage
-            for (let x = 2; x < 7; x++) gs.map[6][x] = TILE_COUNTER;
-            for (let x = 11; x < 16; x++) gs.map[6][x] = TILE_COUNTER;
-            // Fish stalls
-            gs.map[2][3] = TILE_FISH_STALL; gs.map[2][4] = TILE_FISH_STALL;
-            gs.map[3][3] = TILE_FISH_STALL; gs.map[3][4] = TILE_FISH_STALL;
-            gs.map[2][12] = TILE_FISH_STALL; gs.map[2][13] = TILE_FISH_STALL;
-            gs.map[3][12] = TILE_FISH_STALL; gs.map[3][13] = TILE_FISH_STALL;
-            // Hanging fish
-            gs.map[2][7] = TILE_HANGING_FISH; gs.map[2][9] = TILE_HANGING_FISH;
-            // Barrels
-            gs.map[4][3] = TILE_BARREL; gs.map[4][13] = TILE_BARREL;
-            // Cash chest
-            gs.map[2][15] = TILE_CHEST;
-            // Chairs
-            gs.map[9][3] = TILE_CHAIR; gs.map[9][13] = TILE_CHAIR;
-            // Display table
-            gs.map[11][4] = TILE_TABLE; gs.map[11][5] = TILE_TABLE;
-            // NPC fisher
+            // === FISH MARKET — fish stalls, hanging fish, counter ===
+            // Fish stalls left wall (behind counter)
+            gs.map[2][2] = TILE_FISH_STALL; gs.map[3][2] = TILE_FISH_STALL;
+            gs.map[4][2] = TILE_FISH_STALL;
+            // Fish stalls right wall (behind counter)
+            gs.map[2][15] = TILE_FISH_STALL; gs.map[3][15] = TILE_FISH_STALL;
+            gs.map[4][15] = TILE_FISH_STALL;
+            // Hanging fish display (back wall)
+            gs.map[2][7] = TILE_HANGING_FISH; gs.map[2][8] = TILE_HANGING_FISH;
+            gs.map[2][9] = TILE_HANGING_FISH; gs.map[2][10] = TILE_HANGING_FISH;
+            // Counter with center gap
+            gs.map[5][3] = TILE_COUNTER; gs.map[5][4] = TILE_COUNTER; gs.map[5][5] = TILE_COUNTER;
+            gs.map[5][6] = TILE_COUNTER; gs.map[5][7] = TILE_COUNTER;
+            gs.map[5][10] = TILE_COUNTER; gs.map[5][11] = TILE_COUNTER;
+            gs.map[5][12] = TILE_COUNTER; gs.map[5][13] = TILE_COUNTER; gs.map[5][14] = TILE_COUNTER;
+            // Barrels (front)
+            gs.map[8][3] = TILE_BARREL; gs.map[8][14] = TILE_BARREL;
+            // Chest (behind counter)
+            gs.map[3][12] = TILE_CHEST;
+            // NPC fisher (behind counter)
             gs.npcs.push({
-                x: 8, y: 4, type: 'fisher', direction: 'down',
+                x: 8, y: 3, type: 'fisher', direction: 'down',
                 animFrame: 0, animTimer: 0, moveTimer: 0, idleTime: 999999
             });
             break;
 
         case 'merchant':
-            // Counter with passage
-            for (let x = 2; x < 7; x++) gs.map[6][x] = TILE_COUNTER;
-            for (let x = 11; x < 16; x++) gs.map[6][x] = TILE_COUNTER;
-            // Potion shelves (back area)
+            // === POTION SHOP — potion shelves on walls, counter ===
+            // Potion shelves left wall
             gs.map[2][2] = TILE_POTION_SHELF; gs.map[3][2] = TILE_POTION_SHELF;
-            gs.map[2][4] = TILE_POTION_SHELF; gs.map[2][5] = TILE_POTION_SHELF;
-            gs.map[3][4] = TILE_POTION_SHELF; gs.map[3][5] = TILE_POTION_SHELF;
-            gs.map[2][11] = TILE_POTION_SHELF; gs.map[2][12] = TILE_POTION_SHELF;
-            gs.map[3][11] = TILE_POTION_SHELF; gs.map[3][12] = TILE_POTION_SHELF;
-            gs.map[2][14] = TILE_POTION_SHELF; gs.map[3][14] = TILE_POTION_SHELF;
-            // Chests
-            gs.map[4][3] = TILE_CHEST; gs.map[4][13] = TILE_CHEST;
-            gs.map[2][15] = TILE_CHEST;
-            // Client area shelves
-            gs.map[8][3] = TILE_POTION_SHELF; gs.map[8][5] = TILE_POTION_SHELF;
-            gs.map[8][12] = TILE_POTION_SHELF; gs.map[8][14] = TILE_POTION_SHELF;
-            // Chairs
-            gs.map[11][4] = TILE_CHAIR; gs.map[11][13] = TILE_CHAIR;
-            // NPC merchant
+            gs.map[4][2] = TILE_POTION_SHELF;
+            gs.map[7][2] = TILE_POTION_SHELF; gs.map[8][2] = TILE_POTION_SHELF;
+            // Potion shelves right wall
+            gs.map[2][15] = TILE_POTION_SHELF; gs.map[3][15] = TILE_POTION_SHELF;
+            gs.map[4][15] = TILE_POTION_SHELF;
+            gs.map[7][15] = TILE_POTION_SHELF; gs.map[8][15] = TILE_POTION_SHELF;
+            // Counter with center gap
+            gs.map[5][3] = TILE_COUNTER; gs.map[5][4] = TILE_COUNTER; gs.map[5][5] = TILE_COUNTER;
+            gs.map[5][6] = TILE_COUNTER; gs.map[5][7] = TILE_COUNTER;
+            gs.map[5][10] = TILE_COUNTER; gs.map[5][11] = TILE_COUNTER;
+            gs.map[5][12] = TILE_COUNTER; gs.map[5][13] = TILE_COUNTER; gs.map[5][14] = TILE_COUNTER;
+            // Chest (behind counter)
+            gs.map[3][8] = TILE_CHEST;
+            // Front display shelves
+            gs.map[8][5] = TILE_POTION_SHELF; gs.map[9][5] = TILE_POTION_SHELF;
+            gs.map[8][12] = TILE_POTION_SHELF; gs.map[9][12] = TILE_POTION_SHELF;
+            // NPC merchant (behind counter)
             gs.npcs.push({
-                x: 8, y: 4, type: 'merchant', direction: 'down',
+                x: 8, y: 3, type: 'merchant', direction: 'down',
                 animFrame: 0, animTimer: 0, moveTimer: 0, idleTime: 999999
             });
             break;
 
         case 'elder':
-            // Bed
+            // === ELDER STUDY — big bookcase, bed, study table ===
+            // Bed 2x3 (top left)
             gs.map[2][2] = TILE_BED; gs.map[2][3] = TILE_BED;
             gs.map[3][2] = TILE_BED; gs.map[3][3] = TILE_BED;
-            // Bookshelves (right wall)
-            gs.map[2][15] = TILE_BOOKSHELF; gs.map[3][15] = TILE_BOOKSHELF;
-            gs.map[4][15] = TILE_BOOKSHELF; gs.map[6][15] = TILE_BOOKSHELF;
-            gs.map[7][15] = TILE_BOOKSHELF; gs.map[8][15] = TILE_BOOKSHELF;
-            // Bookshelves (left wall)
+            gs.map[4][2] = TILE_BED; gs.map[4][3] = TILE_BED;
+            // Large bookcase (top right, 3x2)
+            gs.map[2][14] = TILE_BOOKSHELF; gs.map[2][15] = TILE_BOOKSHELF;
+            gs.map[3][14] = TILE_BOOKSHELF; gs.map[3][15] = TILE_BOOKSHELF;
+            gs.map[4][14] = TILE_BOOKSHELF; gs.map[4][15] = TILE_BOOKSHELF;
+            // Extra bookshelf (left wall)
             gs.map[6][2] = TILE_BOOKSHELF; gs.map[7][2] = TILE_BOOKSHELF;
-            gs.map[8][2] = TILE_BOOKSHELF;
-            // Table + chairs (center)
-            gs.map[7][8] = TILE_TABLE; gs.map[7][9] = TILE_TABLE;
-            gs.map[8][8] = TILE_TABLE; gs.map[8][9] = TILE_TABLE;
-            gs.map[6][8] = TILE_CHAIR; gs.map[9][9] = TILE_CHAIR;
-            gs.map[7][7] = TILE_CHAIR; gs.map[8][10] = TILE_CHAIR;
+            // Table 2x3 + 4 chairs (center)
+            gs.map[6][8] = TILE_TABLE; gs.map[6][9] = TILE_TABLE; gs.map[6][10] = TILE_TABLE;
+            gs.map[7][8] = TILE_TABLE; gs.map[7][9] = TILE_TABLE; gs.map[7][10] = TILE_TABLE;
+            gs.map[5][9] = TILE_CHAIR; gs.map[8][9] = TILE_CHAIR;
+            gs.map[6][7] = TILE_CHAIR; gs.map[7][11] = TILE_CHAIR;
+            // Sofa 1x3 (bottom left)
+            gs.map[10][2] = TILE_SOFA; gs.map[10][3] = TILE_SOFA; gs.map[10][4] = TILE_SOFA;
             // Chest
-            gs.map[2][13] = TILE_CHEST;
+            gs.map[10][15] = TILE_CHEST;
             // NPC elder
             gs.npcs.push({
-                x: 10, y: 4, type: 'elder', direction: 'down',
+                x: 12, y: 8, type: 'elder', direction: 'down',
                 animFrame: 0, animTimer: 0, moveTimer: 0, idleTime: 999999
             });
             break;
 
         case 'doctor':
-            // Medical beds
-            gs.map[2][2] = TILE_MEDICAL_BED; gs.map[2][3] = TILE_MEDICAL_BED;
-            gs.map[3][2] = TILE_MEDICAL_BED; gs.map[3][3] = TILE_MEDICAL_BED;
-            gs.map[2][6] = TILE_MEDICAL_BED; gs.map[2][7] = TILE_MEDICAL_BED;
-            gs.map[3][6] = TILE_MEDICAL_BED; gs.map[3][7] = TILE_MEDICAL_BED;
-            // Potion shelves
-            gs.map[2][14] = TILE_POTION_SHELF; gs.map[3][14] = TILE_POTION_SHELF;
-            gs.map[4][14] = TILE_POTION_SHELF;
+            // === MEDICAL OFFICE — medicine shelves, exam bed, counter ===
+            // Potion shelves left wall (medicine cabinet)
+            gs.map[2][2] = TILE_POTION_SHELF; gs.map[3][2] = TILE_POTION_SHELF;
+            gs.map[4][2] = TILE_POTION_SHELF;
+            // Potion shelves right wall
             gs.map[2][15] = TILE_POTION_SHELF; gs.map[3][15] = TILE_POTION_SHELF;
             gs.map[4][15] = TILE_POTION_SHELF;
-            // Examination table
-            gs.map[7][3] = TILE_TABLE; gs.map[7][4] = TILE_TABLE;
-            gs.map[8][3] = TILE_TABLE; gs.map[8][4] = TILE_TABLE;
-            // Chair
-            gs.map[7][6] = TILE_CHAIR;
-            // Medical chests
-            gs.map[10][2] = TILE_CHEST; gs.map[10][3] = TILE_CHEST;
-            // Desk
-            gs.map[10][13] = TILE_TABLE; gs.map[10][14] = TILE_TABLE;
-            gs.map[10][15] = TILE_CHAIR;
-            // NPC doctor
+            // Counter/desk with center gap
+            gs.map[5][3] = TILE_COUNTER; gs.map[5][4] = TILE_COUNTER; gs.map[5][5] = TILE_COUNTER;
+            gs.map[5][6] = TILE_COUNTER; gs.map[5][7] = TILE_COUNTER;
+            gs.map[5][10] = TILE_COUNTER; gs.map[5][11] = TILE_COUNTER;
+            gs.map[5][12] = TILE_COUNTER; gs.map[5][13] = TILE_COUNTER; gs.map[5][14] = TILE_COUNTER;
+            // Medical bed (patient area, front left)
+            gs.map[7][2] = TILE_MEDICAL_BED; gs.map[7][3] = TILE_MEDICAL_BED;
+            gs.map[8][2] = TILE_MEDICAL_BED; gs.map[8][3] = TILE_MEDICAL_BED;
+            // Chair (patient)
+            gs.map[9][4] = TILE_CHAIR;
+            // Chest (behind counter)
+            gs.map[3][8] = TILE_CHEST;
+            // NPC doctor (behind counter)
             gs.npcs.push({
-                x: 8, y: 5, type: 'doctor', direction: 'down',
+                x: 8, y: 3, type: 'doctor', direction: 'down',
                 animFrame: 0, animTimer: 0, moveTimer: 0, idleTime: 999999
             });
             break;
 
         case 'blacksmith':
-            // Large forge
+            // === FORGE — forge, anvil, workbench, counter ===
+            // Forge 2x2 (behind counter, left)
+            gs.map[2][2] = TILE_FORGE; gs.map[2][3] = TILE_FORGE;
             gs.map[3][2] = TILE_FORGE; gs.map[3][3] = TILE_FORGE;
-            gs.map[4][2] = TILE_FORGE; gs.map[4][3] = TILE_FORGE;
             // Anvil
-            gs.map[2][5] = TILE_ANVIL;
-            // Workbench
-            gs.map[3][13] = TILE_WORKBENCH; gs.map[3][14] = TILE_WORKBENCH;
-            gs.map[4][13] = TILE_WORKBENCH; gs.map[4][14] = TILE_WORKBENCH;
-            // Weapons chest
-            gs.map[2][15] = TILE_CHEST;
-            // Barrels
-            gs.map[10][2] = TILE_BARREL; gs.map[10][4] = TILE_BARREL;
-            gs.map[10][15] = TILE_BARREL;
-            // Work table
-            gs.map[10][5] = TILE_TABLE; gs.map[10][6] = TILE_TABLE;
-            // NPC blacksmith
+            gs.map[4][4] = TILE_ANVIL;
+            // Workbench 2x2 (behind counter, right)
+            gs.map[2][14] = TILE_WORKBENCH; gs.map[2][15] = TILE_WORKBENCH;
+            gs.map[3][14] = TILE_WORKBENCH; gs.map[3][15] = TILE_WORKBENCH;
+            // Counter with center gap
+            gs.map[5][3] = TILE_COUNTER; gs.map[5][4] = TILE_COUNTER; gs.map[5][5] = TILE_COUNTER;
+            gs.map[5][6] = TILE_COUNTER; gs.map[5][7] = TILE_COUNTER;
+            gs.map[5][10] = TILE_COUNTER; gs.map[5][11] = TILE_COUNTER;
+            gs.map[5][12] = TILE_COUNTER; gs.map[5][13] = TILE_COUNTER; gs.map[5][14] = TILE_COUNTER;
+            // Barrels (front left)
+            gs.map[8][2] = TILE_BARREL; gs.map[8][3] = TILE_BARREL;
+            // Display table (front right)
+            gs.map[8][14] = TILE_TABLE; gs.map[8][15] = TILE_TABLE;
+            // Chest (behind counter)
+            gs.map[3][8] = TILE_CHEST;
+            // NPC blacksmith (behind counter)
             gs.npcs.push({
-                x: 5, y: 5, type: 'blacksmith', direction: 'down',
+                x: 8, y: 3, type: 'blacksmith', direction: 'down',
                 animFrame: 0, animTimer: 0, moveTimer: 0, idleTime: 999999
             });
             break;
 
         case 'church':
-            // Altar (top center)
+            // === CHURCH — altar, pews, center aisle ===
+            // Altar (back center, 1x4)
             gs.map[2][7] = TILE_ALTAR; gs.map[2][8] = TILE_ALTAR;
             gs.map[2][9] = TILE_ALTAR; gs.map[2][10] = TILE_ALTAR;
-            gs.map[3][7] = TILE_ALTAR; gs.map[3][8] = TILE_ALTAR;
-            gs.map[3][9] = TILE_ALTAR; gs.map[3][10] = TILE_ALTAR;
-            // Pews (left rows)
-            gs.map[6][3] = TILE_CHURCH_PEW; gs.map[6][4] = TILE_CHURCH_PEW; gs.map[6][5] = TILE_CHURCH_PEW;
-            gs.map[8][3] = TILE_CHURCH_PEW; gs.map[8][4] = TILE_CHURCH_PEW; gs.map[8][5] = TILE_CHURCH_PEW;
-            gs.map[10][3] = TILE_CHURCH_PEW; gs.map[10][4] = TILE_CHURCH_PEW; gs.map[10][5] = TILE_CHURCH_PEW;
-            // Pews (right rows)
-            gs.map[6][12] = TILE_CHURCH_PEW; gs.map[6][13] = TILE_CHURCH_PEW; gs.map[6][14] = TILE_CHURCH_PEW;
-            gs.map[8][12] = TILE_CHURCH_PEW; gs.map[8][13] = TILE_CHURCH_PEW; gs.map[8][14] = TILE_CHURCH_PEW;
-            gs.map[10][12] = TILE_CHURCH_PEW; gs.map[10][13] = TILE_CHURCH_PEW; gs.map[10][14] = TILE_CHURCH_PEW;
-            // Small side altars
-            gs.map[5][2] = TILE_ALTAR; gs.map[5][15] = TILE_ALTAR;
-            // NPC priest
+            // Pews left (2 rows of 4)
+            gs.map[6][3] = TILE_CHURCH_PEW; gs.map[6][4] = TILE_CHURCH_PEW;
+            gs.map[6][5] = TILE_CHURCH_PEW; gs.map[6][6] = TILE_CHURCH_PEW;
+            gs.map[8][3] = TILE_CHURCH_PEW; gs.map[8][4] = TILE_CHURCH_PEW;
+            gs.map[8][5] = TILE_CHURCH_PEW; gs.map[8][6] = TILE_CHURCH_PEW;
+            // Pews right (2 rows of 4)
+            gs.map[6][11] = TILE_CHURCH_PEW; gs.map[6][12] = TILE_CHURCH_PEW;
+            gs.map[6][13] = TILE_CHURCH_PEW; gs.map[6][14] = TILE_CHURCH_PEW;
+            gs.map[8][11] = TILE_CHURCH_PEW; gs.map[8][12] = TILE_CHURCH_PEW;
+            gs.map[8][13] = TILE_CHURCH_PEW; gs.map[8][14] = TILE_CHURCH_PEW;
+            // NPC priest (in front of altar)
             gs.npcs.push({
-                x: 8, y: 5, type: 'priest', direction: 'down',
+                x: 8, y: 4, type: 'priest', direction: 'down',
                 animFrame: 0, animTimer: 0, moveTimer: 0, idleTime: 999999
             });
             break;
 
         case 'villager1':
-            // Double bed (parents)
+            // === FAMILY HOME — 2 beds, table, sofa ===
+            // Parent bed 2x3 (top left)
             gs.map[2][2] = TILE_BED; gs.map[2][3] = TILE_BED;
             gs.map[3][2] = TILE_BED; gs.map[3][3] = TILE_BED;
-            // Single bed (children)
+            gs.map[4][2] = TILE_BED; gs.map[4][3] = TILE_BED;
+            // Child bed 2x2 (top right)
             gs.map[2][14] = TILE_BED; gs.map[2][15] = TILE_BED;
-            // Family table
-            gs.map[7][7] = TILE_TABLE; gs.map[7][8] = TILE_TABLE;
-            gs.map[8][7] = TILE_TABLE; gs.map[8][8] = TILE_TABLE;
-            gs.map[6][7] = TILE_CHAIR; gs.map[9][8] = TILE_CHAIR;
-            gs.map[7][6] = TILE_CHAIR; gs.map[8][9] = TILE_CHAIR;
-            // Chests
-            gs.map[2][10] = TILE_CHEST; gs.map[3][10] = TILE_CHEST;
-            // Sofa
-            gs.map[10][2] = TILE_SOFA; gs.map[10][3] = TILE_SOFA;
+            gs.map[3][14] = TILE_BED; gs.map[3][15] = TILE_BED;
+            // Table 2x3 + 4 chairs (center)
+            gs.map[6][8] = TILE_TABLE; gs.map[6][9] = TILE_TABLE; gs.map[6][10] = TILE_TABLE;
+            gs.map[7][8] = TILE_TABLE; gs.map[7][9] = TILE_TABLE; gs.map[7][10] = TILE_TABLE;
+            gs.map[5][9] = TILE_CHAIR; gs.map[8][9] = TILE_CHAIR;
+            gs.map[6][7] = TILE_CHAIR; gs.map[7][11] = TILE_CHAIR;
+            // Sofa 1x3 (bottom left)
+            gs.map[10][2] = TILE_SOFA; gs.map[10][3] = TILE_SOFA; gs.map[10][4] = TILE_SOFA;
+            // Chests (bottom right)
+            gs.map[10][14] = TILE_CHEST; gs.map[10][15] = TILE_CHEST; gs.map[10][16] = TILE_CHEST;
             // Shelf
-            gs.map[10][14] = TILE_SHELF;
+            gs.map[5][2] = TILE_SHELF;
             // NPC
             gs.npcs.push({
-                x: 10, y: 7, type: 'villager', direction: 'down',
+                x: 12, y: 8, type: 'villager', direction: 'down',
                 animFrame: 0, animTimer: 0, moveTimer: 0, idleTime: 999999
             });
             break;
 
         case 'villager2':
-            // Double bed
+            // === SINGLE HOME — bed, table, bookshelf ===
+            // Bed 2x3 (top left)
             gs.map[2][2] = TILE_BED; gs.map[2][3] = TILE_BED;
             gs.map[3][2] = TILE_BED; gs.map[3][3] = TILE_BED;
-            // Small table
-            gs.map[7][13] = TILE_TABLE; gs.map[7][14] = TILE_TABLE;
-            gs.map[6][13] = TILE_CHAIR; gs.map[8][14] = TILE_CHAIR;
-            // Bookshelf
-            gs.map[2][14] = TILE_BOOKSHELF; gs.map[3][14] = TILE_BOOKSHELF;
-            gs.map[4][14] = TILE_BOOKSHELF;
-            // Chest
-            gs.map[2][15] = TILE_CHEST;
-            // Large sofa
-            gs.map[10][3] = TILE_SOFA; gs.map[10][4] = TILE_SOFA; gs.map[10][5] = TILE_SOFA;
-            // Coffee table
-            gs.map[9][4] = TILE_TABLE;
-            // Shelf
-            gs.map[2][8] = TILE_SHELF;
+            gs.map[4][2] = TILE_BED; gs.map[4][3] = TILE_BED;
+            // Bookshelves 2x2 (top right)
+            gs.map[2][14] = TILE_BOOKSHELF; gs.map[2][15] = TILE_BOOKSHELF;
+            gs.map[3][14] = TILE_BOOKSHELF; gs.map[3][15] = TILE_BOOKSHELF;
+            // Table 2x3 + 4 chairs (center)
+            gs.map[6][8] = TILE_TABLE; gs.map[6][9] = TILE_TABLE; gs.map[6][10] = TILE_TABLE;
+            gs.map[7][8] = TILE_TABLE; gs.map[7][9] = TILE_TABLE; gs.map[7][10] = TILE_TABLE;
+            gs.map[5][9] = TILE_CHAIR; gs.map[8][9] = TILE_CHAIR;
+            gs.map[6][7] = TILE_CHAIR; gs.map[7][11] = TILE_CHAIR;
+            // Sofa 1x3 (bottom left)
+            gs.map[10][2] = TILE_SOFA; gs.map[10][3] = TILE_SOFA; gs.map[10][4] = TILE_SOFA;
+            // Chests (bottom right)
+            gs.map[10][14] = TILE_CHEST; gs.map[10][15] = TILE_CHEST;
             // NPC
             gs.npcs.push({
-                x: 12, y: 6, type: 'villager', direction: 'left',
+                x: 12, y: 8, type: 'villager', direction: 'down',
                 animFrame: 0, animTimer: 0, moveTimer: 0, idleTime: 999999
             });
             break;
 
         case 'villager3':
-            // Double bed
-            gs.map[2][2] = TILE_BED; gs.map[2][3] = TILE_BED;
-            gs.map[3][2] = TILE_BED; gs.map[3][3] = TILE_BED;
-            // Dining table
-            gs.map[6][12] = TILE_TABLE; gs.map[6][13] = TILE_TABLE;
-            gs.map[7][12] = TILE_TABLE; gs.map[7][13] = TILE_TABLE;
-            gs.map[5][12] = TILE_CHAIR; gs.map[8][13] = TILE_CHAIR;
-            gs.map[6][11] = TILE_CHAIR; gs.map[7][14] = TILE_CHAIR;
-            // Storage chests
-            gs.map[2][14] = TILE_CHEST; gs.map[2][15] = TILE_CHEST;
-            // Modern sofa
+            // === SINGLE HOME (variant) — bed right, table, desk ===
+            // Bed 2x3 (top right)
+            gs.map[2][14] = TILE_BED; gs.map[2][15] = TILE_BED;
+            gs.map[3][14] = TILE_BED; gs.map[3][15] = TILE_BED;
+            gs.map[4][14] = TILE_BED; gs.map[4][15] = TILE_BED;
+            // Bookshelves 1x2 (top left)
+            gs.map[2][2] = TILE_BOOKSHELF; gs.map[2][3] = TILE_BOOKSHELF;
+            // Table 2x3 + 4 chairs (center)
+            gs.map[6][6] = TILE_TABLE; gs.map[6][7] = TILE_TABLE; gs.map[6][8] = TILE_TABLE;
+            gs.map[7][6] = TILE_TABLE; gs.map[7][7] = TILE_TABLE; gs.map[7][8] = TILE_TABLE;
+            gs.map[5][7] = TILE_CHAIR; gs.map[8][7] = TILE_CHAIR;
+            gs.map[6][5] = TILE_CHAIR; gs.map[7][9] = TILE_CHAIR;
+            // Sofa 1x3 (bottom left)
             gs.map[10][2] = TILE_SOFA; gs.map[10][3] = TILE_SOFA; gs.map[10][4] = TILE_SOFA;
-            // Shelves
-            gs.map[3][8] = TILE_SHELF; gs.map[4][8] = TILE_SHELF;
-            // Desk
-            gs.map[10][14] = TILE_TABLE; gs.map[10][15] = TILE_CHAIR;
+            // Chests (bottom right)
+            gs.map[10][13] = TILE_CHEST; gs.map[10][14] = TILE_CHEST; gs.map[10][15] = TILE_CHEST;
+            // Desk + chair (mid right)
+            gs.map[4][2] = TILE_TABLE; gs.map[4][3] = TILE_TABLE;
+            gs.map[4][4] = TILE_CHAIR;
             // NPC
             gs.npcs.push({
-                x: 9, y: 9, type: 'villager', direction: 'right',
+                x: 12, y: 8, type: 'villager', direction: 'down',
                 animFrame: 0, animTimer: 0, moveTimer: 0, idleTime: 999999
             });
             break;

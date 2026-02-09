@@ -41,6 +41,12 @@ export const TILE_TOMATO_FIELD = 32;
 export const TILE_CARROT_FIELD = 33;
 export const TILE_PLOWED_SOIL = 34;
 
+// Snow/mountain tiles
+export const TILE_SNOW = 35;
+export const TILE_ICE = 36;
+export const TILE_PINE_TREE = 37;
+export const TILE_MOUNTAIN = 38;
+
 // ========================================
 // WALKABILITY SETS
 // ========================================
@@ -52,7 +58,8 @@ export const SOLID_TILES = new Set([
     TILE_SHELF, TILE_HANGING_FISH, TILE_VEGETABLE_CRATE, TILE_BARREL,
     TILE_FISH_STALL, TILE_CARROT_CRATE, TILE_ANVIL, TILE_FORGE,
     TILE_POTION_SHELF, TILE_MEDICAL_BED, TILE_ALTAR, TILE_CHURCH_PEW,
-    TILE_FOUNTAIN, TILE_BENCH, TILE_LAMPPOST
+    TILE_FOUNTAIN, TILE_BENCH, TILE_LAMPPOST,
+    TILE_PINE_TREE, TILE_MOUNTAIN
 ]);
 
 // Tiles NPCs cannot walk on (includes dock)
@@ -63,7 +70,8 @@ export const NPC_SOLID_TILES = new Set([
     TILE_SHELF, TILE_HANGING_FISH, TILE_VEGETABLE_CRATE, TILE_BARREL,
     TILE_FISH_STALL, TILE_CARROT_CRATE, TILE_ANVIL, TILE_FORGE,
     TILE_POTION_SHELF, TILE_MEDICAL_BED, TILE_ALTAR, TILE_CHURCH_PEW,
-    TILE_FOUNTAIN, TILE_BENCH, TILE_LAMPPOST
+    TILE_FOUNTAIN, TILE_BENCH, TILE_LAMPPOST,
+    TILE_PINE_TREE, TILE_MOUNTAIN
 ]);
 
 // ========================================

@@ -426,9 +426,24 @@ function drawInteractionPrompt(ctx, gs) {
     }
     // Priority 3: Boat
     else if (gs.nearBoat && !gs.currentDialogue) {
-        message = gs.currentIsland === 'main'
-            ? 'Press E to travel to desert island'
-            : 'Press E to return to main island';
+        if (gs.currentIsland === 'main') {
+            message = 'Press E to travel to desert island';
+        } else if (gs.currentIsland === 'desert') {
+            // Check which dock we're near
+            let nearSnowDock = false;
+            if (gs.snowDockLocation) {
+                const dist = Math.sqrt(
+                    Math.pow(gs.nearBoat.x - gs.snowDockLocation.x, 2) +
+                    Math.pow(gs.nearBoat.y - gs.snowDockLocation.y, 2)
+                );
+                nearSnowDock = dist < 6;
+            }
+            message = nearSnowDock
+                ? 'Press E to travel to snow island'
+                : 'Press E to return to main island';
+        } else if (gs.currentIsland === 'snow') {
+            message = 'Press E to return to desert island';
+        }
     }
 
     if (message) {
@@ -1149,6 +1164,10 @@ export function drawFullMap(ctx, gs) {
                     case 32: ctx.fillStyle = '#ff6347'; break; // Tomato field
                     case 33: ctx.fillStyle = '#32cd32'; break; // Carrot field
                     case 34: ctx.fillStyle = '#6b4423'; break; // Plowed soil
+                    case 35: ctx.fillStyle = '#f0f0f0'; break; // Snow
+                    case 36: ctx.fillStyle = '#add8e6'; break; // Ice
+                    case 37: ctx.fillStyle = '#1a5c2a'; break; // Pine tree
+                    case 38: ctx.fillStyle = '#696969'; break; // Mountain
                     default: ctx.fillStyle = '#3a7d44'; break;
                 }
             }

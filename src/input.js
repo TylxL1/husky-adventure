@@ -4,7 +4,7 @@
 import { getDialogue } from './npc.js';
 import { performAttack, chooseLevelUpReward, consumeItem } from './combat.js';
 import { enterHouse, exitHouse } from './house.js';
-import { travelToDesertIsland, travelToMainIsland } from './island.js';
+import { travelToDesertIsland, travelToMainIsland, travelToSnowIsland, travelToDesertFromSnow } from './island.js';
 
 // ----------------------------------------
 // Handle interaction (E key)
@@ -149,7 +149,20 @@ function handleInteraction(gs) {
         if (gs.currentIsland === 'main') {
             travelToDesertIsland(gs);
         } else if (gs.currentIsland === 'desert') {
+            // Check which dock the boat is near
+            if (gs.snowDockLocation) {
+                const distToSnowDock = Math.sqrt(
+                    Math.pow(gs.nearBoat.x - gs.snowDockLocation.x, 2) +
+                    Math.pow(gs.nearBoat.y - gs.snowDockLocation.y, 2)
+                );
+                if (distToSnowDock < 6) {
+                    travelToSnowIsland(gs);
+                    return;
+                }
+            }
             travelToMainIsland(gs);
+        } else if (gs.currentIsland === 'snow') {
+            travelToDesertFromSnow(gs);
         }
     }
 }

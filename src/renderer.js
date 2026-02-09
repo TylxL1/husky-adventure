@@ -10,6 +10,7 @@ import {
     TILE_POTION_SHELF, TILE_MEDICAL_BED, TILE_ALTAR, TILE_CHURCH_PEW,
     TILE_FOUNTAIN, TILE_BENCH, TILE_COBBLESTONE, TILE_LAMPPOST,
     TILE_TOMATO_FIELD, TILE_CARROT_FIELD, TILE_PLOWED_SOIL,
+    TILE_SNOW, TILE_ICE, TILE_PINE_TREE, TILE_MOUNTAIN,
     JUMP_VISUAL_SCALE
 } from './constants.js';
 
@@ -141,20 +142,43 @@ function floor(ctx, sx, sy) {
     ctx.fillStyle = '#c9b590'; ctx.fillRect(sx, sy, TILE_SIZE, TILE_SIZE);
 }
 
-function renderBed(ctx, sx, sy) {
-    floor(ctx, sx, sy);
-    ctx.fillStyle = '#654321'; ctx.fillRect(sx + 6, sy + 6, 36, 36);
-    ctx.fillStyle = '#6495ED'; ctx.fillRect(sx + 9, sy + 9, 30, 30);
-    ctx.fillStyle = '#f0f0f0'; ctx.fillRect(sx + 12, sy + 12, 24, 12);
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.2)'; ctx.fillRect(sx + 8, sy + 40, 32, 2);
+// Neighbor detection for seamless multi-tile furniture
+function adj(tile, x, y, gs) {
+    if (!gs || !gs.map) return { l: false, r: false, u: false, d: false };
+    return {
+        l: x > 0 && gs.map[y][x - 1] === tile,
+        r: x < gs.mapWidth - 1 && gs.map[y][x + 1] === tile,
+        u: y > 0 && gs.map[y - 1][x] === tile,
+        d: y < gs.mapHeight - 1 && gs.map[y + 1][x] === tile
+    };
 }
 
-function renderTable(ctx, sx, sy) {
+function renderBed(ctx, sx, sy, x, y, gs) {
     floor(ctx, sx, sy);
-    ctx.fillStyle = '#d2691e'; ctx.fillRect(sx + 6, sy + 18, 36, 18);
-    ctx.fillStyle = '#e88d3e'; ctx.fillRect(sx + 8, sy + 20, 32, 6);
-    ctx.fillStyle = '#8b4513'; ctx.fillRect(sx + 10, sy + 36, 4, 8); ctx.fillRect(sx + 34, sy + 36, 4, 8);
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.2)'; ctx.fillRect(sx + 8, sy + 42, 32, 2);
+    const n = adj(TILE_BED, x, y, gs);
+    const T = TILE_SIZE;
+    const l = n.l ? 0 : 4, r = n.r ? T : T - 4, t = n.u ? 0 : 4, b = n.d ? T : T - 4;
+    ctx.fillStyle = '#654321'; ctx.fillRect(sx + l, sy + t, r - l, b - t);
+    ctx.fillStyle = '#6495ED'; ctx.fillRect(sx + l + 3, sy + t + 3, r - l - 6, b - t - 6);
+    if (!n.u) { ctx.fillStyle = '#f0f0f0'; ctx.fillRect(sx + l + 5, sy + t + 5, r - l - 10, 10); }
+    if (!n.d) { ctx.fillStyle = '#4169E1'; ctx.fillRect(sx + l + 3, sy + b - 14, r - l - 6, 6); }
+    if (!n.d) { ctx.fillStyle = 'rgba(0, 0, 0, 0.2)'; ctx.fillRect(sx + l + 2, sy + b, r - l - 4, 2); }
+}
+
+function renderTable(ctx, sx, sy, x, y, gs) {
+    floor(ctx, sx, sy);
+    const n = adj(TILE_TABLE, x, y, gs);
+    const T = TILE_SIZE;
+    const l = n.l ? 0 : 6, r = n.r ? T : T - 6;
+    const t = n.u ? 12 : 14, b = n.d ? T : 36;
+    ctx.fillStyle = '#d2691e'; ctx.fillRect(sx + l, sy + t, r - l, b - t);
+    ctx.fillStyle = '#e88d3e'; ctx.fillRect(sx + l + 2, sy + t + 2, r - l - 4, 4);
+    if (!n.d) {
+        ctx.fillStyle = '#8b4513';
+        if (!n.l) ctx.fillRect(sx + l + 2, sy + b, 4, 8);
+        if (!n.r) ctx.fillRect(sx + r - 6, sy + b, 4, 8);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)'; ctx.fillRect(sx + l + 2, sy + 42, r - l - 4, 2);
+    }
 }
 
 function renderChair(ctx, sx, sy) {
@@ -173,40 +197,74 @@ function renderChest(ctx, sx, sy) {
     ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'; ctx.fillRect(sx + 10, sy + 40, 28, 2);
 }
 
-function renderWorkbench(ctx, sx, sy) {
+function renderWorkbench(ctx, sx, sy, x, y, gs) {
     floor(ctx, sx, sy);
-    ctx.fillStyle = '#808080'; ctx.fillRect(sx + 6, sy + 18, 36, 16);
-    ctx.fillStyle = '#654321'; ctx.fillRect(sx + 8, sy + 34, 32, 6);
-    ctx.fillStyle = '#b87333'; ctx.fillRect(sx + 12, sy + 22, 6, 3); ctx.fillRect(sx + 30, sy + 24, 4, 4);
-    ctx.fillStyle = '#4a3010'; ctx.fillRect(sx + 10, sy + 40, 4, 6); ctx.fillRect(sx + 34, sy + 40, 4, 6);
+    const n = adj(TILE_WORKBENCH, x, y, gs);
+    const T = TILE_SIZE;
+    const l = n.l ? 0 : 6, r = n.r ? T : T - 6;
+    ctx.fillStyle = '#808080'; ctx.fillRect(sx + l, sy + 16, r - l, 14);
+    ctx.fillStyle = '#654321'; ctx.fillRect(sx + l + 2, sy + 30, r - l - 4, 6);
+    ctx.fillStyle = '#b87333'; ctx.fillRect(sx + l + 6, sy + 20, 6, 3);
+    if (r - l > 24) ctx.fillRect(sx + r - 12, sy + 22, 4, 4);
+    ctx.fillStyle = '#4a3010';
+    if (!n.l) ctx.fillRect(sx + l + 2, sy + 36, 4, 6);
+    if (!n.r) ctx.fillRect(sx + r - 6, sy + 36, 4, 6);
 }
 
-function renderBookshelf(ctx, sx, sy) {
+function renderBookshelf(ctx, sx, sy, x, y, gs) {
     floor(ctx, sx, sy);
-    ctx.fillStyle = '#654321'; ctx.fillRect(sx + 6, sy + 6, 36, 40);
+    const n = adj(TILE_BOOKSHELF, x, y, gs);
+    const T = TILE_SIZE;
+    const l = n.l ? 0 : 4, r = n.r ? T : T - 4, t = n.u ? 0 : 4, b = n.d ? T : T - 4;
+    ctx.fillStyle = '#654321'; ctx.fillRect(sx + l, sy + t, r - l, b - t);
+    ctx.fillStyle = '#5a3318'; ctx.fillRect(sx + l + 2, sy + t + 2, r - l - 4, b - t - 4);
+    const colors = ['#8b0000', '#00008b', '#228b22', '#8b4513', '#4b0082'];
+    const rows = Math.max(1, Math.floor((b - t - 8) / 14));
+    for (let i = 0; i < rows; i++) {
+        const by = sy + t + 4 + i * Math.floor((b - t - 8) / rows);
+        const rh = Math.floor((b - t - 8) / rows) - 3;
+        if (rh < 4) continue;
+        const bw = r - l - 8;
+        for (let j = 0; j < 3; j++) {
+            ctx.fillStyle = colors[(i * 3 + j) % colors.length];
+            ctx.fillRect(sx + l + 4 + Math.floor(j * bw / 3), by, Math.floor(bw / 3) - 2, rh);
+        }
+        ctx.fillStyle = '#8b6914'; ctx.fillRect(sx + l + 2, by + rh, r - l - 4, 2);
+    }
+}
+
+function renderCounter(ctx, sx, sy, x, y, gs) {
+    floor(ctx, sx, sy);
+    const n = adj(TILE_COUNTER, x, y, gs);
+    const T = TILE_SIZE;
+    const l = n.l ? 0 : 4, r = n.r ? T : T - 4;
+    ctx.fillStyle = '#cd853f'; ctx.fillRect(sx + l, sy + 14, r - l, 24);
+    ctx.fillStyle = '#daa520'; ctx.fillRect(sx + l, sy + 14, r - l, 6);
+    ctx.fillStyle = '#f0e68c'; ctx.fillRect(sx + l + 2, sy + 16, r - l - 4, 2);
     ctx.fillStyle = '#8b6914';
-    ctx.fillRect(sx + 8, sy + 12, 32, 3); ctx.fillRect(sx + 8, sy + 22, 32, 3); ctx.fillRect(sx + 8, sy + 32, 32, 3);
-    ctx.fillStyle = '#8b0000'; ctx.fillRect(sx + 10, sy + 14, 6, 7);
-    ctx.fillStyle = '#00008b'; ctx.fillRect(sx + 17, sy + 14, 6, 7);
-    ctx.fillStyle = '#228b22'; ctx.fillRect(sx + 24, sy + 14, 6, 7);
-    ctx.fillStyle = '#8b4513'; ctx.fillRect(sx + 14, sy + 24, 6, 7); ctx.fillRect(sx + 26, sy + 24, 8, 7);
+    const hw = Math.floor((r - l - 4) / 2);
+    ctx.fillRect(sx + l + 2, sy + 24, hw - 1, 10); ctx.fillRect(sx + l + hw + 3, sy + 24, hw - 1, 10);
 }
 
-function renderCounter(ctx, sx, sy) {
+function renderSofa(ctx, sx, sy, x, y, gs) {
     floor(ctx, sx, sy);
-    ctx.fillStyle = '#cd853f'; ctx.fillRect(sx + 4, sy + 14, 40, 24);
-    ctx.fillStyle = '#daa520'; ctx.fillRect(sx + 6, sy + 14, 36, 8);
-    ctx.fillStyle = '#f0e68c'; ctx.fillRect(sx + 8, sy + 16, 32, 2);
-    ctx.fillStyle = '#8b6914'; ctx.fillRect(sx + 6, sy + 26, 16, 10); ctx.fillRect(sx + 26, sy + 26, 14, 10);
-}
-
-function renderSofa(ctx, sx, sy) {
-    floor(ctx, sx, sy);
-    ctx.fillStyle = '#8b0000'; ctx.fillRect(sx + 8, sy + 12, 32, 12);
-    ctx.fillStyle = '#a52a2a'; ctx.fillRect(sx + 8, sy + 24, 32, 14);
-    ctx.fillStyle = '#dc143c'; ctx.fillRect(sx + 10, sy + 16, 12, 8); ctx.fillRect(sx + 26, sy + 16, 12, 8);
-    ctx.fillStyle = '#654321'; ctx.fillRect(sx + 12, sy + 38, 3, 5); ctx.fillRect(sx + 33, sy + 38, 3, 5);
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'; ctx.fillRect(sx + 10, sy + 42, 28, 2);
+    const n = adj(TILE_SOFA, x, y, gs);
+    const T = TILE_SIZE;
+    const l = n.l ? 0 : 8, r = n.r ? T : T - 8;
+    // Back
+    ctx.fillStyle = '#8b0000'; ctx.fillRect(sx + l, sy + 10, r - l, 12);
+    // Cushion
+    ctx.fillStyle = '#a52a2a'; ctx.fillRect(sx + l, sy + 22, r - l, 14);
+    // Cushion highlight
+    ctx.fillStyle = '#dc143c'; ctx.fillRect(sx + l + 4, sy + 14, r - l - 8, 6);
+    // Armrests
+    if (!n.l) { ctx.fillStyle = '#8b0000'; ctx.fillRect(sx + 2, sy + 10, 10, 28); }
+    if (!n.r) { ctx.fillStyle = '#8b0000'; ctx.fillRect(sx + T - 12, sy + 10, 10, 28); }
+    // Legs
+    ctx.fillStyle = '#654321';
+    if (!n.l) ctx.fillRect(sx + 4, sy + 38, 3, 5);
+    if (!n.r) ctx.fillRect(sx + T - 7, sy + 38, 3, 5);
+    if (!n.r) { ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'; ctx.fillRect(sx + l, sy + 42, r - l, 2); }
 }
 
 function renderShelf(ctx, sx, sy) {
@@ -259,15 +317,18 @@ function renderBarrel(ctx, sx, sy) {
     ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'; ctx.fillRect(sx + 14, sy + 40, 20, 2);
 }
 
-function renderFishStall(ctx, sx, sy) {
+function renderFishStall(ctx, sx, sy, x, y, gs) {
     floor(ctx, sx, sy);
-    ctx.fillStyle = '#8b6914'; ctx.fillRect(sx + 6, sy + 18, 36, 20);
-    ctx.fillStyle = '#654321'; ctx.fillRect(sx + 6, sy + 18, 36, 3); ctx.fillRect(sx + 6, sy + 35, 36, 3);
-    ctx.fillStyle = '#e0f7fa'; ctx.fillRect(sx + 8, sy + 22, 32, 12);
-    ctx.fillStyle = '#ffffff'; ctx.fillRect(sx + 10, sy + 24, 8, 2); ctx.fillRect(sx + 24, sy + 26, 12, 2);
-    ctx.fillStyle = '#c0c0c0'; ctx.fillRect(sx + 12, sy + 26, 10, 4); ctx.fillRect(sx + 26, sy + 28, 10, 4);
-    ctx.fillStyle = '#a8a8a8'; ctx.fillRect(sx + 14, sy + 27, 6, 2); ctx.fillRect(sx + 28, sy + 29, 6, 2);
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'; ctx.fillRect(sx + 8, sy + 38, 32, 2);
+    const n = adj(TILE_FISH_STALL, x, y, gs);
+    const T = TILE_SIZE;
+    const l = n.l ? 0 : 4, r = n.r ? T : T - 4;
+    ctx.fillStyle = '#8b6914'; ctx.fillRect(sx + l, sy + 16, r - l, 22);
+    ctx.fillStyle = '#654321'; ctx.fillRect(sx + l, sy + 16, r - l, 3); ctx.fillRect(sx + l, sy + 35, r - l, 3);
+    ctx.fillStyle = '#e0f7fa'; ctx.fillRect(sx + l + 2, sy + 20, r - l - 4, 14);
+    ctx.fillStyle = '#c0c0c0'; ctx.fillRect(sx + l + 6, sy + 24, 10, 4);
+    if (r - l > 24) ctx.fillRect(sx + r - 16, sy + 26, 10, 4);
+    ctx.fillStyle = '#a8a8a8'; ctx.fillRect(sx + l + 8, sy + 25, 6, 2);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'; ctx.fillRect(sx + l + 2, sy + 38, r - l - 4, 2);
 }
 
 function renderCarrotCrate(ctx, sx, sy) {
@@ -292,69 +353,106 @@ function renderAnvil(ctx, sx, sy) {
     ctx.fillStyle = 'rgba(0, 0, 0, 0.4)'; ctx.fillRect(sx + 10, sy + 40, 28, 2);
 }
 
-function renderForge(ctx, sx, sy) {
+function renderForge(ctx, sx, sy, x, y, gs) {
     floor(ctx, sx, sy);
-    ctx.fillStyle = '#696969'; ctx.fillRect(sx + 6, sy + 14, 36, 28);
+    const n = adj(TILE_FORGE, x, y, gs);
+    const T = TILE_SIZE;
+    const l = n.l ? 0 : 4, r = n.r ? T : T - 4, t = n.u ? 0 : 4, b = n.d ? T : T - 4;
+    ctx.fillStyle = '#696969'; ctx.fillRect(sx + l, sy + t, r - l, b - t);
     ctx.fillStyle = '#808080';
-    for (let i = 0; i < 3; i++) { ctx.fillRect(sx + 8, sy + 16 + i * 8, 14, 6); ctx.fillRect(sx + 24, sy + 16 + i * 8, 14, 6); }
-    ctx.fillStyle = '#ff4500'; ctx.fillRect(sx + 14, sy + 24, 20, 12);
-    ctx.fillStyle = '#ff8c00'; ctx.fillRect(sx + 18, sy + 26, 4, 8); ctx.fillRect(sx + 26, sy + 28, 4, 6);
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'; ctx.fillRect(sx + 8, sy + 42, 32, 2);
+    const bh = Math.floor((b - t - 8) / 3);
+    for (let i = 0; i < 3; i++) {
+        const by = t + 4 + i * bh;
+        ctx.fillRect(sx + l + 2, sy + by, (r - l - 4) / 2 - 1, bh - 2);
+        ctx.fillRect(sx + l + (r - l) / 2 + 1, sy + by, (r - l - 4) / 2 - 1, bh - 2);
+    }
+    const fw = Math.min(20, r - l - 12), fh = Math.min(12, b - t - 12);
+    ctx.fillStyle = '#ff4500'; ctx.fillRect(sx + (l + r) / 2 - fw / 2, sy + (t + b) / 2 - fh / 2 + 4, fw, fh);
+    ctx.fillStyle = '#ff8c00'; ctx.fillRect(sx + (l + r) / 2 - 2, sy + (t + b) / 2 + 2, 4, fh / 2);
+    if (!n.d) { ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'; ctx.fillRect(sx + l + 2, sy + b, r - l - 4, 2); }
 }
 
-function renderPotionShelf(ctx, sx, sy) {
+function renderPotionShelf(ctx, sx, sy, x, y, gs) {
     floor(ctx, sx, sy);
-    ctx.fillStyle = '#654321'; ctx.fillRect(sx + 6, sy + 6, 36, 40);
-    ctx.fillStyle = '#8b6914';
-    ctx.fillRect(sx + 8, sy + 12, 32, 3); ctx.fillRect(sx + 8, sy + 22, 32, 3); ctx.fillRect(sx + 8, sy + 32, 32, 3);
-    // Potions row 1
-    ctx.fillStyle = '#dc143c'; ctx.fillRect(sx + 10, sy + 14, 5, 7);
-    ctx.fillStyle = '#ff69b4'; ctx.fillRect(sx + 11, sy + 15, 3, 3);
-    ctx.fillStyle = '#1e90ff'; ctx.fillRect(sx + 18, sy + 14, 5, 7);
-    ctx.fillStyle = '#87ceeb'; ctx.fillRect(sx + 19, sy + 15, 3, 3);
-    ctx.fillStyle = '#32cd32'; ctx.fillRect(sx + 26, sy + 14, 5, 7);
-    ctx.fillStyle = '#90ee90'; ctx.fillRect(sx + 27, sy + 15, 3, 3);
-    ctx.fillStyle = '#9370db'; ctx.fillRect(sx + 34, sy + 14, 5, 7);
-    ctx.fillStyle = '#dda0dd'; ctx.fillRect(sx + 35, sy + 15, 3, 3);
-    // Potions row 2
-    ctx.fillStyle = '#dc143c'; ctx.fillRect(sx + 14, sy + 24, 5, 7);
-    ctx.fillStyle = '#1e90ff'; ctx.fillRect(sx + 22, sy + 24, 5, 7);
-    ctx.fillStyle = '#32cd32'; ctx.fillRect(sx + 30, sy + 24, 5, 7);
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'; ctx.fillRect(sx + 8, sy + 44, 32, 2);
+    const n = adj(TILE_POTION_SHELF, x, y, gs);
+    const T = TILE_SIZE;
+    const l = n.l ? 0 : 4, r = n.r ? T : T - 4, t = n.u ? 0 : 4, b = n.d ? T : T - 4;
+    ctx.fillStyle = '#654321'; ctx.fillRect(sx + l, sy + t, r - l, b - t);
+    ctx.fillStyle = '#5a3318'; ctx.fillRect(sx + l + 2, sy + t + 2, r - l - 4, b - t - 4);
+    const pc = [['#dc143c', '#ff69b4'], ['#1e90ff', '#87ceeb'], ['#32cd32', '#90ee90'], ['#9370db', '#dda0dd']];
+    const rows = Math.max(1, Math.floor((b - t - 8) / 14));
+    for (let i = 0; i < rows; i++) {
+        const by = sy + t + 4 + i * Math.floor((b - t - 8) / rows);
+        const rh = Math.floor((b - t - 8) / rows) - 3;
+        if (rh < 4) continue;
+        const bw = r - l - 8;
+        const cnt = Math.max(1, Math.floor(bw / 10));
+        for (let j = 0; j < cnt; j++) {
+            const c = pc[(i * cnt + j) % pc.length];
+            const px = sx + l + 4 + j * Math.floor(bw / cnt);
+            ctx.fillStyle = c[0]; ctx.fillRect(px, by, 5, rh);
+            ctx.fillStyle = c[1]; ctx.fillRect(px + 1, by + 1, 3, 3);
+        }
+        ctx.fillStyle = '#8b6914'; ctx.fillRect(sx + l + 2, by + rh, r - l - 4, 2);
+    }
 }
 
-function renderMedicalBed(ctx, sx, sy) {
+function renderMedicalBed(ctx, sx, sy, x, y, gs) {
     floor(ctx, sx, sy);
-    ctx.fillStyle = '#a9a9a9'; ctx.fillRect(sx + 6, sy + 18, 36, 22);
-    ctx.fillStyle = '#f5f5f5'; ctx.fillRect(sx + 8, sy + 20, 32, 16);
-    ctx.fillStyle = '#fffaf0'; ctx.fillRect(sx + 10, sy + 22, 12, 8);
-    ctx.fillStyle = '#dc143c';
-    ctx.fillRect(sx + 26, sy + 28, 8, 2); ctx.fillRect(sx + 29, sy + 25, 2, 8);
-    ctx.fillStyle = '#696969'; ctx.fillRect(sx + 8, sy + 38, 3, 5); ctx.fillRect(sx + 37, sy + 38, 3, 5);
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'; ctx.fillRect(sx + 8, sy + 42, 32, 2);
+    const n = adj(TILE_MEDICAL_BED, x, y, gs);
+    const T = TILE_SIZE;
+    const l = n.l ? 0 : 4, r = n.r ? T : T - 4, t = n.u ? 0 : 4, b = n.d ? T : T - 4;
+    ctx.fillStyle = '#a9a9a9'; ctx.fillRect(sx + l, sy + t, r - l, b - t);
+    ctx.fillStyle = '#f5f5f5'; ctx.fillRect(sx + l + 3, sy + t + 3, r - l - 6, b - t - 6);
+    if (!n.u) { ctx.fillStyle = '#fffaf0'; ctx.fillRect(sx + l + 5, sy + t + 5, r - l - 10, 8); }
+    if (!n.u && !n.l) {
+        ctx.fillStyle = '#dc143c';
+        const cx = sx + (l + r) / 2 + 6, cy = sy + (t + b) / 2 + 4;
+        ctx.fillRect(cx - 4, cy - 1, 8, 2); ctx.fillRect(cx - 1, cy - 4, 2, 8);
+    }
+    if (!n.d) {
+        ctx.fillStyle = '#696969';
+        if (!n.l) ctx.fillRect(sx + l + 2, sy + b, 3, 5);
+        if (!n.r) ctx.fillRect(sx + r - 5, sy + b, 3, 5);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'; ctx.fillRect(sx + l + 2, sy + b + 2, r - l - 4, 2);
+    }
 }
 
-function renderAltar(ctx, sx, sy) {
+function renderAltar(ctx, sx, sy, x, y, gs) {
     floor(ctx, sx, sy);
-    ctx.fillStyle = '#808080'; ctx.fillRect(sx + 4, sy + 22, 40, 20);
-    ctx.fillStyle = '#d3d3d3'; ctx.fillRect(sx + 4, sy + 20, 40, 4);
-    ctx.fillStyle = '#ffffff'; ctx.fillRect(sx + 6, sy + 20, 36, 18);
-    ctx.fillStyle = '#ffd700';
-    ctx.fillRect(sx + 22, sy + 12, 4, 12); ctx.fillRect(sx + 18, sy + 16, 12, 4);
-    ctx.fillStyle = '#fff8dc'; ctx.fillRect(sx + 10, sy + 24, 3, 8); ctx.fillRect(sx + 35, sy + 24, 3, 8);
-    ctx.fillStyle = '#ff8c00'; ctx.fillRect(sx + 10, sy + 22, 3, 3); ctx.fillRect(sx + 35, sy + 22, 3, 3);
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'; ctx.fillRect(sx + 6, sy + 42, 36, 2);
+    const n = adj(TILE_ALTAR, x, y, gs);
+    const T = TILE_SIZE;
+    const l = n.l ? 0 : 4, r = n.r ? T : T - 4;
+    ctx.fillStyle = '#808080'; ctx.fillRect(sx + l, sy + 20, r - l, 22);
+    ctx.fillStyle = '#d3d3d3'; ctx.fillRect(sx + l, sy + 18, r - l, 4);
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(sx + l + 2, sy + 18, r - l - 4, 18);
+    if (!n.l) {
+        ctx.fillStyle = '#ffd700';
+        ctx.fillRect(sx + l + 16, sy + 8, 4, 12); ctx.fillRect(sx + l + 12, sy + 12, 12, 4);
+        ctx.fillStyle = '#fff8dc'; ctx.fillRect(sx + l + 4, sy + 22, 3, 8);
+        ctx.fillStyle = '#ff8c00'; ctx.fillRect(sx + l + 4, sy + 20, 3, 3);
+    }
+    if (!n.r) {
+        ctx.fillStyle = '#fff8dc'; ctx.fillRect(sx + r - 7, sy + 22, 3, 8);
+        ctx.fillStyle = '#ff8c00'; ctx.fillRect(sx + r - 7, sy + 20, 3, 3);
+    }
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'; ctx.fillRect(sx + l + 2, sy + 42, r - l - 4, 2);
 }
 
-function renderChurchPew(ctx, sx, sy) {
+function renderChurchPew(ctx, sx, sy, x, y, gs) {
     floor(ctx, sx, sy);
-    ctx.fillStyle = '#654321'; ctx.fillRect(sx + 6, sy + 24, 36, 12);
-    ctx.fillStyle = '#8b4513'; ctx.fillRect(sx + 6, sy + 12, 36, 12);
+    const n = adj(TILE_CHURCH_PEW, x, y, gs);
+    const T = TILE_SIZE;
+    const l = n.l ? 0 : 4, r = n.r ? T : T - 4;
+    ctx.fillStyle = '#654321'; ctx.fillRect(sx + l, sy + 22, r - l, 14);
+    ctx.fillStyle = '#8b4513'; ctx.fillRect(sx + l, sy + 10, r - l, 12);
     ctx.fillStyle = '#654321';
-    ctx.fillRect(sx + 8, sy + 14, 2, 8); ctx.fillRect(sx + 16, sy + 14, 2, 8);
-    ctx.fillRect(sx + 24, sy + 14, 2, 8); ctx.fillRect(sx + 32, sy + 14, 2, 8); ctx.fillRect(sx + 38, sy + 14, 2, 8);
-    ctx.fillStyle = '#4a3010'; ctx.fillRect(sx + 10, sy + 36, 3, 6); ctx.fillRect(sx + 35, sy + 36, 3, 6);
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'; ctx.fillRect(sx + 8, sy + 42, 32, 2);
+    const slats = Math.max(1, Math.floor((r - l) / 8));
+    for (let i = 0; i < slats; i++) ctx.fillRect(sx + l + 4 + i * 8, sy + 12, 2, 8);
+    ctx.fillStyle = '#4a3010';
+    if (!n.l) ctx.fillRect(sx + l + 2, sy + 36, 3, 6);
+    if (!n.r) ctx.fillRect(sx + r - 5, sy + 36, 3, 6);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'; ctx.fillRect(sx + l + 2, sy + 42, r - l - 4, 2);
 }
 
 function renderFountain(ctx, sx, sy) {
@@ -434,6 +532,123 @@ function renderPlowedSoil(ctx, sx, sy) {
     ctx.fillRect(sx + 8, sy + 14, 6, 4); ctx.fillRect(sx + 24, sy + 26, 6, 4); ctx.fillRect(sx + 36, sy + 38, 6, 4);
 }
 
+function renderSnow(ctx, sx, sy, x, y) {
+    const snowVar = (x * 17 + y * 23) % 4;
+    const snowColors = ['#f0f0f0', '#e8e8e8', '#f5f5f5', '#ebebeb'];
+    ctx.fillStyle = snowColors[snowVar];
+    ctx.fillRect(sx, sy, TILE_SIZE, TILE_SIZE);
+    // Sparkle dots
+    ctx.fillStyle = '#ffffff';
+    for (let i = 0; i < 3; i++) {
+        const px = ((x * 13 + y * 19 + i * 11) % 30) + 4;
+        const py = ((x * 17 + y * 11 + i * 7) % 30) + 4;
+        ctx.fillRect(sx + px, sy + py, 2, 2);
+    }
+    // Subtle shadow variation
+    ctx.fillStyle = 'rgba(180, 200, 220, 0.15)';
+    const sx2 = ((x * 7 + y * 13) % 20) + 6;
+    const sy2 = ((x * 11 + y * 7) % 20) + 6;
+    ctx.fillRect(sx + sx2, sy + sy2, 8, 4);
+}
+
+function renderIce(ctx, sx, sy, x, y) {
+    ctx.fillStyle = '#add8e6';
+    ctx.fillRect(sx, sy, TILE_SIZE, TILE_SIZE);
+    // Lighter blue variation
+    ctx.fillStyle = '#c0e8f0';
+    ctx.fillRect(sx + 4, sy + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+    // White crack lines
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+    ctx.lineWidth = 1;
+    const seed = (x * 31 + y * 37) % 5;
+    ctx.beginPath();
+    ctx.moveTo(sx + 6 + seed * 3, sy + 4);
+    ctx.lineTo(sx + 20 + seed * 2, sy + 18);
+    ctx.lineTo(sx + 12 + seed, sy + 38);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(sx + 30 - seed * 2, sy + 8);
+    ctx.lineTo(sx + 24 + seed, sy + 28);
+    ctx.stroke();
+    // Reflection highlight
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.fillRect(sx + 10, sy + 8, 12, 4);
+}
+
+function renderPineTree(ctx, sx, sy) {
+    // Snow ground base
+    ctx.fillStyle = '#e8e8e8';
+    ctx.fillRect(sx, sy, TILE_SIZE, TILE_SIZE);
+    // Shadow
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+    ctx.beginPath(); ctx.ellipse(sx + 16, sy + 38, 8, 4, 0, 0, Math.PI * 2); ctx.fill();
+    // Brown trunk
+    ctx.fillStyle = '#5a3a1e'; ctx.fillRect(sx + 14, sy + 30, 6, 10);
+    ctx.fillStyle = '#6b4423'; ctx.fillRect(sx + 14, sy + 30, 2, 10);
+    // Dark green triangle layers (bottom to top)
+    ctx.fillStyle = '#0d3b0d';
+    ctx.beginPath(); ctx.moveTo(sx + 17, sy + 4); ctx.lineTo(sx + 6, sy + 20); ctx.lineTo(sx + 28, sy + 20); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#145214';
+    ctx.beginPath(); ctx.moveTo(sx + 17, sy + 10); ctx.lineTo(sx + 4, sy + 28); ctx.lineTo(sx + 30, sy + 28); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#1a6b1a';
+    ctx.beginPath(); ctx.moveTo(sx + 17, sy + 18); ctx.lineTo(sx + 4, sy + 34); ctx.lineTo(sx + 30, sy + 34); ctx.closePath(); ctx.fill();
+    // Snow on tips
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(sx + 15, sy + 4, 4, 3);
+    ctx.fillRect(sx + 6, sy + 18, 6, 3);
+    ctx.fillRect(sx + 22, sy + 18, 6, 3);
+    ctx.fillRect(sx + 4, sy + 26, 5, 3);
+    ctx.fillRect(sx + 25, sy + 26, 5, 3);
+}
+
+function renderMountain(ctx, sx, sy, x, y, gs) {
+    const n = adj(TILE_MOUNTAIN, x, y, gs);
+    // Snow ground base
+    ctx.fillStyle = '#e8e8e8';
+    ctx.fillRect(sx, sy, TILE_SIZE, TILE_SIZE);
+    // Mountain body - gray/brown rocky peak
+    const baseColor = ((x + y) % 2 === 0) ? '#696969' : '#5a5a5a';
+    ctx.fillStyle = baseColor;
+    if (n.l && n.r) {
+        // Middle of range - flat top
+        ctx.fillRect(sx, sy, TILE_SIZE, TILE_SIZE);
+    } else if (!n.l && !n.r) {
+        // Standalone peak
+        ctx.beginPath(); ctx.moveTo(sx + 4, sy + TILE_SIZE); ctx.lineTo(sx + TILE_SIZE / 2, sy + 2);
+        ctx.lineTo(sx + TILE_SIZE - 4, sy + TILE_SIZE); ctx.closePath(); ctx.fill();
+    } else if (!n.l) {
+        // Left edge
+        ctx.beginPath(); ctx.moveTo(sx + 4, sy + TILE_SIZE); ctx.lineTo(sx + 12, sy + 2);
+        ctx.lineTo(sx + TILE_SIZE, sy); ctx.lineTo(sx + TILE_SIZE, sy + TILE_SIZE); ctx.closePath(); ctx.fill();
+    } else {
+        // Right edge
+        ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx + TILE_SIZE - 12, sy + 2);
+        ctx.lineTo(sx + TILE_SIZE - 4, sy + TILE_SIZE); ctx.lineTo(sx, sy + TILE_SIZE); ctx.closePath(); ctx.fill();
+    }
+    // Darker rock cracks
+    ctx.fillStyle = '#404040';
+    ctx.fillRect(sx + 14, sy + 20, 2, 6);
+    ctx.fillRect(sx + 22, sy + 14, 2, 8);
+    // Lighter rock highlights
+    ctx.fillStyle = '#808080';
+    ctx.fillRect(sx + 8, sy + 16, 4, 2);
+    ctx.fillRect(sx + 28, sy + 24, 4, 2);
+    // Snow cap on top
+    ctx.fillStyle = '#ffffff';
+    if (n.l && n.r) {
+        ctx.fillRect(sx, sy, TILE_SIZE, 8);
+    } else if (!n.l && !n.r) {
+        ctx.beginPath(); ctx.moveTo(sx + TILE_SIZE / 2 - 6, sy + 10); ctx.lineTo(sx + TILE_SIZE / 2, sy + 2);
+        ctx.lineTo(sx + TILE_SIZE / 2 + 6, sy + 10); ctx.closePath(); ctx.fill();
+    } else if (!n.l) {
+        ctx.beginPath(); ctx.moveTo(sx + 6, sy + 10); ctx.lineTo(sx + 12, sy + 2);
+        ctx.lineTo(sx + TILE_SIZE, sy); ctx.lineTo(sx + TILE_SIZE, sy + 8); ctx.lineTo(sx + 20, sy + 10); ctx.closePath(); ctx.fill();
+    } else {
+        ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx + TILE_SIZE - 12, sy + 2);
+        ctx.lineTo(sx + TILE_SIZE - 6, sy + 10); ctx.lineTo(sx, sy + 8); ctx.closePath(); ctx.fill();
+    }
+}
+
 // ========================================
 // Tile renderer registry
 // ========================================
@@ -470,7 +685,11 @@ const tileRenderers = {
     [TILE_LAMPPOST]: renderLamppost,
     [TILE_TOMATO_FIELD]: renderTomatoField,
     [TILE_CARROT_FIELD]: renderCarrotField,
-    [TILE_PLOWED_SOIL]: renderPlowedSoil
+    [TILE_PLOWED_SOIL]: renderPlowedSoil,
+    [TILE_SNOW]: renderSnow,
+    [TILE_ICE]: renderIce,
+    [TILE_PINE_TREE]: renderPineTree,
+    [TILE_MOUNTAIN]: renderMountain
 };
 
 // ========================================
@@ -487,7 +706,7 @@ export function drawTile(ctx, tile, screenX, screenY, x, y, gs) {
         return;
     }
     const renderer = tileRenderers[tile];
-    if (renderer) renderer(ctx, screenX, screenY, x, y);
+    if (renderer) renderer(ctx, screenX, screenY, x, y, gs);
 }
 
 export function drawMap(ctx, gs) {

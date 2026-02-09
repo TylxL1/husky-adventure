@@ -75,11 +75,15 @@ function createGameState(canvas, ctx) {
         portLocation: null,
         waterDirection: null,
         desertDockLocation: null,
+        snowDockLocation: null,
+        snowReturnDockLocation: null,
 
         // Island system
         currentIsland: 'main',
         savedMainIsland: null,
         savedMainPlayer: null,
+        savedDesertIsland: null,
+        savedDesertPlayer: null,
         nearBoat: null,
 
         // House system
@@ -150,7 +154,7 @@ function startIntro(gs) {
         // Add elder NPC for intro
         gs.introElder = {
             x: 9,
-            y: 6,
+            y: 5,
             type: 'elder',
             direction: 'down',
             animFrame: 0,
