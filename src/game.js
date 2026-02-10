@@ -9,12 +9,12 @@ import {
 import { handlePlayerMovement, handleJump, updatePlayerAnimation } from './player.js';
 import { updateCamera } from './camera.js';
 import { createMap } from './map.js';
-import { createNPCs, updateNPCs, drawNPCs, checkNearNPC, drawIntroElder } from './npc.js';
+import { createNPCs, updateNPCs, drawNPCs, checkNearNPC, drawIntroElder, createAnimals, updateAnimals, drawAnimals } from './npc.js';
 import { createEnemies, createTreasureChest, updateEnemies, drawEnemies } from './enemy.js';
 import { updateCombat, updatePotionEffects } from './combat.js';
-import { checkNearHouse, createHouseInterior } from './house.js';
+import { checkNearHouse, checkNearBed, checkNearChest, createHouseInterior } from './house.js';
 import { createBoats, updateBoats, checkNearBoat } from './island.js';
-import { drawMap, drawBoats, drawTreasureChest, drawPlayer, drawAttack, drawShield } from './renderer.js';
+import { drawMap, drawBoats, drawTreasureChest, drawPlayer, drawAttack, drawShield, drawNightOverlay, drawSleepAnimation } from './renderer.js';
 import { drawUI, drawHelp, drawIntroDialogue, drawFullMap } from './ui.js';
 import { setupControls } from './input.js';
 
@@ -71,6 +71,7 @@ function createGameState(canvas, ctx) {
         map: [],
         houses: [],
         npcs: [],
+        animals: [],
         boats: [],
         portLocation: null,
         waterDirection: null,
@@ -112,6 +113,24 @@ function createGameState(canvas, ctx) {
         // Leveling
         levelUpChoice: false,
         levelUpOptions: ['heart', 'gems'],
+
+        // Day/night cycle
+        isNight: false,
+        nearBed: false,
+        sleepAnim: {
+            active: false,
+            phase: 0,
+            timer: 0,
+            fadeDuration: 90,
+            messageDuration: 120,
+            targetIsNight: false
+        },
+
+        // Storage system
+        nearChest: false,
+        playerStorage: {},
+        storageOpen: false,
+        storageMode: 'deposit',
 
         // Potion effects
         activeEffects: {
@@ -172,13 +191,38 @@ function update(gs, dt) {
     updateCamera(gs);
     updatePlayerAnimation(gs, dt);
     updateNPCs(gs, dt);
+    updateAnimals(gs, dt);
     updateBoats(gs, dt);
     updateEnemies(gs, dt);
     updateCombat(gs, dt);
     checkNearBoat(gs);
     checkNearHouse(gs);
+    checkNearBed(gs);
+    checkNearChest(gs);
     checkNearNPC(gs);
     updatePotionEffects(gs, dt);
+
+    // Sleep animation state machine
+    if (gs.sleepAnim.active) {
+        const anim = gs.sleepAnim;
+        anim.timer += dt;
+
+        if (anim.phase === 1 && anim.timer >= anim.fadeDuration) {
+            // Fade-to-black complete → show message, toggle day/night
+            anim.phase = 2;
+            anim.timer = 0;
+            gs.isNight = anim.targetIsNight;
+        } else if (anim.phase === 2 && anim.timer >= anim.messageDuration) {
+            // Message shown → fade from black
+            anim.phase = 3;
+            anim.timer = 0;
+        } else if (anim.phase === 3 && anim.timer >= anim.fadeDuration) {
+            // Fade-from-black complete → done
+            anim.active = false;
+            anim.phase = 0;
+            anim.timer = 0;
+        }
+    }
 
     // Dialogue timer
     if (gs.currentDialogue) {
@@ -205,15 +249,18 @@ function draw(gs) {
         drawMap(ctx, gs);
         drawBoats(ctx, gs);
         drawNPCs(ctx, gs);
+        drawAnimals(ctx, gs);
         drawEnemies(ctx, gs);
         drawTreasureChest(ctx, gs);
         drawPlayer(ctx, gs);
         drawAttack(ctx, gs);
         drawShield(ctx, gs);
+        drawNightOverlay(ctx, gs);
         drawIntroElder(ctx, gs);
         drawUI(ctx, gs);
         drawIntroDialogue(ctx, gs);
         drawHelp(ctx, gs);
+        drawSleepAnimation(ctx, gs);
     }
 }
 
@@ -234,6 +281,7 @@ export function initGame() {
     // Generate world
     createMap(gs);
     createNPCs(gs);
+    createAnimals(gs);
     createBoats(gs);
     createEnemies(gs);
     createTreasureChest(gs);

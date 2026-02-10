@@ -47,12 +47,15 @@ export const TILE_ICE = 36;
 export const TILE_PINE_TREE = 37;
 export const TILE_MOUNTAIN = 38;
 
+// Outdoor structures
+export const TILE_FENCE = 39;
+
 // ========================================
 // WALKABILITY SETS
 // ========================================
 // Tiles the player cannot walk on
 export const SOLID_TILES = new Set([
-    TILE_WATER, TILE_TREE, TILE_HOUSE, TILE_ROCK,
+    TILE_WATER, TILE_TREE, TILE_HOUSE, TILE_ROCK, TILE_FENCE,
     TILE_BED, TILE_TABLE, TILE_CHAIR, TILE_CHEST,
     TILE_WORKBENCH, TILE_BOOKSHELF, TILE_COUNTER, TILE_SOFA,
     TILE_SHELF, TILE_HANGING_FISH, TILE_VEGETABLE_CRATE, TILE_BARREL,
@@ -64,7 +67,7 @@ export const SOLID_TILES = new Set([
 
 // Tiles NPCs cannot walk on (includes dock)
 export const NPC_SOLID_TILES = new Set([
-    TILE_WATER, TILE_TREE, TILE_HOUSE, TILE_ROCK, TILE_DOCK,
+    TILE_WATER, TILE_TREE, TILE_HOUSE, TILE_ROCK, TILE_DOCK, TILE_FENCE,
     TILE_BED, TILE_TABLE, TILE_CHAIR, TILE_CHEST,
     TILE_WORKBENCH, TILE_BOOKSHELF, TILE_COUNTER, TILE_SOFA,
     TILE_SHELF, TILE_HANGING_FISH, TILE_VEGETABLE_CRATE, TILE_BARREL,

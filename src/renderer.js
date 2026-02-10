@@ -11,6 +11,7 @@ import {
     TILE_FOUNTAIN, TILE_BENCH, TILE_COBBLESTONE, TILE_LAMPPOST,
     TILE_TOMATO_FIELD, TILE_CARROT_FIELD, TILE_PLOWED_SOIL,
     TILE_SNOW, TILE_ICE, TILE_PINE_TREE, TILE_MOUNTAIN,
+    TILE_FENCE,
     JUMP_VISUAL_SCALE
 } from './constants.js';
 
@@ -115,6 +116,52 @@ function renderRock(ctx, sx, sy) {
     ctx.fillStyle = '#909090'; ctx.beginPath(); ctx.ellipse(sx + 15, sy + 16, 9, 7, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#b0b0b0'; ctx.beginPath(); ctx.ellipse(sx + 12, sy + 14, 4, 3, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#505050'; ctx.fillRect(sx + 18, sy + 17, 3, 2); ctx.fillRect(sx + 14, sy + 20, 2, 2);
+}
+
+function renderFence(ctx, sx, sy, x, y, gs) {
+    // Grass background
+    renderGrass(ctx, sx, sy, x, y);
+    const T = TILE_SIZE;
+
+    // Detect neighbors for continuous fence
+    const hasLeft = x > 0 && gs.map[y][x - 1] === TILE_FENCE;
+    const hasRight = x < gs.mapWidth - 1 && gs.map[y][x + 1] === TILE_FENCE;
+    const hasUp = y > 0 && gs.map[y - 1][x] === TILE_FENCE;
+    const hasDown = y < gs.mapHeight - 1 && gs.map[y + 1][x] === TILE_FENCE;
+
+    // Wooden fence posts (vertical dark planks)
+    ctx.fillStyle = '#8B6914';
+    ctx.fillRect(sx + 4, sy + 8, 5, 34);
+    ctx.fillRect(sx + T - 9, sy + 8, 5, 34);
+
+    // Post tops (darker caps)
+    ctx.fillStyle = '#6B4E12';
+    ctx.fillRect(sx + 3, sy + 6, 7, 4);
+    ctx.fillRect(sx + T - 10, sy + 6, 7, 4);
+
+    // Horizontal rails
+    ctx.fillStyle = '#A0791A';
+    if (hasLeft || hasRight) {
+        // Two horizontal rails connecting posts
+        ctx.fillRect(sx, sy + 16, T, 4);
+        ctx.fillRect(sx, sy + 30, T, 4);
+        // Wood grain highlight
+        ctx.fillStyle = '#B8912A';
+        ctx.fillRect(sx + 2, sy + 17, T - 4, 1);
+        ctx.fillRect(sx + 2, sy + 31, T - 4, 1);
+    }
+    if (hasUp || hasDown) {
+        // Two vertical rails
+        ctx.fillStyle = '#A0791A';
+        ctx.fillRect(sx + T / 2 - 2, sy, 4, T);
+        // Wood grain
+        ctx.fillStyle = '#B8912A';
+        ctx.fillRect(sx + T / 2 - 1, sy + 2, 1, T - 4);
+    }
+
+    // Shadow at base
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+    ctx.fillRect(sx + 2, sy + 42, T - 4, 2);
 }
 
 function renderDock(ctx, sx, sy, x, y, gs) {
@@ -689,7 +736,8 @@ const tileRenderers = {
     [TILE_SNOW]: renderSnow,
     [TILE_ICE]: renderIce,
     [TILE_PINE_TREE]: renderPineTree,
-    [TILE_MOUNTAIN]: renderMountain
+    [TILE_MOUNTAIN]: renderMountain,
+    [TILE_FENCE]: renderFence
 };
 
 // ========================================
@@ -1046,4 +1094,139 @@ export function drawShield(ctx, gs) {
     ctx.beginPath(); ctx.ellipse(0, 0, 14, 16, 0, 0, Math.PI * 2); ctx.stroke();
 
     ctx.restore();
+}
+
+// ----------------------------------------
+// Draw night overlay with light sources
+// ----------------------------------------
+export function drawNightOverlay(ctx, gs) {
+    if (!gs.isNight || gs.insideHouse) return;
+
+    const w = gs.canvas.width;
+    const h = gs.canvas.height;
+
+    // Create/reuse offscreen canvas
+    if (!gs._nightCanvas || gs._nightCanvas.width !== w || gs._nightCanvas.height !== h) {
+        gs._nightCanvas = document.createElement('canvas');
+        gs._nightCanvas.width = w;
+        gs._nightCanvas.height = h;
+    }
+
+    const nctx = gs._nightCanvas.getContext('2d');
+
+    // Fill with dark night color
+    nctx.globalCompositeOperation = 'source-over';
+    nctx.fillStyle = 'rgba(10, 15, 40, 0.55)';
+    nctx.fillRect(0, 0, w, h);
+
+    // Punch light holes using destination-out
+    nctx.globalCompositeOperation = 'destination-out';
+
+    const startX = Math.floor(gs.camera.x);
+    const startY = Math.floor(gs.camera.y);
+    const endX = Math.min(startX + gs.viewportTilesX + 2, gs.mapWidth);
+    const endY = Math.min(startY + gs.viewportTilesY + 2, gs.mapHeight);
+
+    for (let y = startY; y < endY; y++) {
+        for (let x = startX; x < endX; x++) {
+            const tile = gs.map[y][x];
+            let radius = 0;
+
+            if (tile === TILE_LAMPPOST) {
+                radius = 180;
+            } else if (tile === TILE_FOUNTAIN) {
+                radius = 220;
+            }
+
+            if (radius > 0) {
+                const sx = (x + 0.5 - gs.camera.x) * TILE_SIZE;
+                const sy = (y + 0.5 - gs.camera.y) * TILE_SIZE;
+                const grad = nctx.createRadialGradient(sx, sy, 0, sx, sy, radius);
+                grad.addColorStop(0, 'rgba(0, 0, 0, 1)');
+                grad.addColorStop(0.4, 'rgba(0, 0, 0, 0.8)');
+                grad.addColorStop(0.7, 'rgba(0, 0, 0, 0.3)');
+                grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                nctx.fillStyle = grad;
+                nctx.fillRect(sx - radius, sy - radius, radius * 2, radius * 2);
+            }
+        }
+    }
+
+    // Player personal light
+    const playerScreenX = (gs.player.x - gs.camera.x) * TILE_SIZE + TILE_SIZE / 2;
+    const playerScreenY = (gs.player.y - gs.camera.y) * TILE_SIZE + TILE_SIZE / 2;
+    const playerRadius = 130;
+    const playerGrad = nctx.createRadialGradient(
+        playerScreenX, playerScreenY, 0,
+        playerScreenX, playerScreenY, playerRadius
+    );
+    playerGrad.addColorStop(0, 'rgba(0, 0, 0, 1)');
+    playerGrad.addColorStop(0.4, 'rgba(0, 0, 0, 0.8)');
+    playerGrad.addColorStop(0.7, 'rgba(0, 0, 0, 0.3)');
+    playerGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    nctx.fillStyle = playerGrad;
+    nctx.fillRect(
+        playerScreenX - playerRadius, playerScreenY - playerRadius,
+        playerRadius * 2, playerRadius * 2
+    );
+
+    // Reset composite operation
+    nctx.globalCompositeOperation = 'source-over';
+
+    // Draw the overlay onto main canvas
+    ctx.drawImage(gs._nightCanvas, 0, 0);
+}
+
+// ----------------------------------------
+// Draw sleep animation overlay
+// ----------------------------------------
+export function drawSleepAnimation(ctx, gs) {
+    if (!gs.sleepAnim.active) return;
+
+    const w = gs.canvas.width;
+    const h = gs.canvas.height;
+    const anim = gs.sleepAnim;
+
+    let alpha = 0;
+    let showMessage = false;
+
+    if (anim.phase === 1) {
+        // Fade to black
+        alpha = Math.min(1, anim.timer / anim.fadeDuration);
+    } else if (anim.phase === 2) {
+        // Fully black with message
+        alpha = 1;
+        showMessage = true;
+    } else if (anim.phase === 3) {
+        // Fade from black
+        alpha = Math.max(0, 1 - anim.timer / anim.fadeDuration);
+    }
+
+    if (alpha > 0) {
+        ctx.fillStyle = `rgba(0, 0, 0, ${alpha})`;
+        ctx.fillRect(0, 0, w, h);
+    }
+
+    if (showMessage) {
+        const msgAlpha = Math.min(1, anim.timer / 30);
+        ctx.save();
+        ctx.globalAlpha = msgAlpha;
+
+        const message = anim.targetIsNight
+            ? 'Night has fallen...'
+            : 'A new day begins!';
+        const icon = anim.targetIsNight ? '\u{1F319}' : '\u{2600}\u{FE0F}';
+
+        ctx.font = 'bold 36px monospace';
+        ctx.fillStyle = '#ffd700';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${icon} ${message}`, w / 2, h / 2);
+
+        ctx.font = '18px monospace';
+        ctx.fillStyle = '#aaaaaa';
+        ctx.fillText('...', w / 2, h / 2 + 40);
+
+        ctx.textAlign = 'left';
+        ctx.restore();
+    }
 }

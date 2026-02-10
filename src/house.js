@@ -45,6 +45,44 @@ export function checkNearHouse(gs) {
 }
 
 // ----------------------------------------
+// Check proximity to bed (player's house only)
+// ----------------------------------------
+export function checkNearBed(gs) {
+    gs.nearBed = false;
+    if (!gs.insideHouse || gs.insideHouse.type !== 'player') return;
+
+    // Bed tiles at (2-3, 2-4), center ~(2.5, 3)
+    const bedCenterX = 2.5;
+    const bedCenterY = 3;
+    const dist = Math.sqrt(
+        Math.pow(gs.player.x - bedCenterX, 2) +
+        Math.pow(gs.player.y - bedCenterY, 2)
+    );
+    if (dist < 2.5) {
+        gs.nearBed = true;
+    }
+}
+
+// ----------------------------------------
+// Check proximity to chests (player's house only)
+// ----------------------------------------
+export function checkNearChest(gs) {
+    gs.nearChest = false;
+    if (!gs.insideHouse || gs.insideHouse.type !== 'player') return;
+
+    // Chests at (14-16, 10), center ~(15, 10)
+    const chestCenterX = 15;
+    const chestCenterY = 10;
+    const dist = Math.sqrt(
+        Math.pow(gs.player.x - chestCenterX, 2) +
+        Math.pow(gs.player.y - chestCenterY, 2)
+    );
+    if (dist < 2.5) {
+        gs.nearChest = true;
+    }
+}
+
+// ----------------------------------------
 // Enter a house
 // ----------------------------------------
 export function enterHouse(gs, house) {

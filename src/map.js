@@ -6,6 +6,7 @@ import {
     TILE_FLOWER, TILE_ROCK, TILE_DOCK, TILE_FOUNTAIN,
     TILE_BENCH, TILE_COBBLESTONE, TILE_LAMPPOST,
     TILE_TOMATO_FIELD, TILE_CARROT_FIELD, TILE_PLOWED_SOIL,
+    TILE_FENCE,
     MAP_WIDTH, MAP_HEIGHT
 } from './constants.js';
 
@@ -69,12 +70,21 @@ export function createMap(gs) {
     // Farmer fields
     createFarmerFields(gs);
 
+    // Goat pen next to farmer fields
+    createGoatPen(gs);
+
     // Central plaza and paths
     createCentralPlaza(gs);
     createPathsFromPlaza(gs);
 
     // Port with docks
     createPort(gs);
+
+    // Fishing pier near east coast
+    createFishingSpot(gs);
+
+    // Lampposts along paths
+    placeLamppostsOnPaths(gs);
 
     // Trees
     for (let i = 0; i < 80; i++) {
@@ -277,13 +287,80 @@ function createPath(gs, x1, y1, x2, y2) {
 function placePath(gs, x, y) {
     if (x >= 0 && x < gs.mapWidth && y >= 0 && y < gs.mapHeight) {
         const tile = gs.map[y][x];
-        // Don't overwrite houses, water, docks, fountain, bench, cobblestone, lamppost
+        // Don't overwrite houses, water, docks, fountain, bench, cobblestone, lamppost, fence
         if (tile !== TILE_HOUSE && tile !== TILE_WATER && tile !== TILE_DOCK &&
             tile !== TILE_FOUNTAIN && tile !== TILE_BENCH &&
-            tile !== TILE_COBBLESTONE && tile !== TILE_LAMPPOST) {
+            tile !== TILE_COBBLESTONE && tile !== TILE_LAMPPOST && tile !== TILE_FENCE) {
             gs.map[y][x] = TILE_PATH;
         }
     }
+}
+
+// ----------------------------------------
+// Place lampposts along major paths
+// ----------------------------------------
+function placeLamppostsOnPaths(gs) {
+    const plaza = gs.plazaCenter;
+    if (!plaza) return;
+
+    const houseTargets = [
+        { x: 15, y: 10 },   // player
+        { x: 25, y: 12 },   // villager1
+        { x: 55, y: 10 },   // villager2
+        { x: 68, y: 14 },   // farmer
+        { x: 75, y: 25 },   // merchant
+        { x: 70, y: 35 },   // fisher
+        { x: 60, y: 46 },   // doctor
+        { x: 48, y: 48 },   // elder
+        { x: 20, y: 48 },   // blacksmith
+        { x: 12, y: 40 },   // villager3
+        { x: 30, y: 28 }    // church
+    ];
+
+    const placed = [];
+    const minSpacing = 8;
+
+    function tryPlace(px, py) {
+        const tooClose = placed.some(p =>
+            Math.sqrt(Math.pow(p.x - px, 2) + Math.pow(p.y - py, 2)) < minSpacing
+        );
+        if (tooClose) return;
+
+        const offsets = [
+            { dx: 1, dy: 0 }, { dx: -1, dy: 0 },
+            { dx: 0, dy: 1 }, { dx: 0, dy: -1 },
+            { dx: 1, dy: 1 }, { dx: -1, dy: 1 },
+            { dx: 0, dy: 0 }
+        ];
+
+        for (const off of offsets) {
+            const lx = px + off.dx;
+            const ly = py + off.dy;
+            if (lx >= 0 && lx < gs.mapWidth && ly >= 0 && ly < gs.mapHeight) {
+                const tile = gs.map[ly][lx];
+                if (tile === TILE_GRASS || tile === TILE_PATH) {
+                    gs.map[ly][lx] = TILE_LAMPPOST;
+                    placed.push({ x: lx, y: ly });
+                    break;
+                }
+            }
+        }
+    }
+
+    // Place at 1/3, 1/2, and 2/3 points of each plaza-to-house route
+    houseTargets.forEach(target => {
+        const pts = [1/3, 1/2, 2/3];
+        pts.forEach(t => {
+            const px = Math.floor(plaza.x + (target.x - plaza.x) * t);
+            const py = Math.floor(plaza.y + (target.y - plaza.y) * t);
+            tryPlace(px, py);
+        });
+    });
+
+    // Extra lampposts near each house entrance
+    houseTargets.forEach(target => {
+        tryPlace(target.x + 2, target.y + 2);
+    });
 }
 
 // ----------------------------------------
@@ -379,4 +456,90 @@ function createPort(gs) {
 
     // Path from spawn to port
     createPath(gs, gs.player.x, gs.player.y, portX, portY - 3);
+}
+
+// ----------------------------------------
+// Goat pen next to farmer fields
+// ----------------------------------------
+function createGoatPen(gs) {
+    // Above-left of farmer fields, away from paths
+    const penX = 73;
+    const penY = 6;
+    const penW = 6;
+    const penH = 5;
+
+    for (let x = penX; x < penX + penW; x++) {
+        for (let y = penY; y < penY + penH; y++) {
+            if (x < 0 || x >= gs.mapWidth || y < 0 || y >= gs.mapHeight) continue;
+
+            const isEdge = x === penX || x === penX + penW - 1 ||
+                           y === penY || y === penY + penH - 1;
+
+            if (isEdge) {
+                // Skip entrance gap on south side
+                if (y === penY + penH - 1 && x === penX + 1) continue;
+                gs.map[y][x] = TILE_FENCE;
+            } else {
+                gs.map[y][x] = TILE_GRASS;
+            }
+        }
+    }
+
+    // Replace water above the pen with grass (2 rows buffer)
+    for (let y = penY - 2; y < penY; y++) {
+        for (let x = penX - 1; x < penX + penW + 1; x++) {
+            if (x >= 0 && x < gs.mapWidth && y >= 0 && y < gs.mapHeight) {
+                if (gs.map[y][x] === TILE_WATER) {
+                    gs.map[y][x] = TILE_GRASS;
+                }
+            }
+        }
+    }
+
+    // Store pen bounds for animal clamping (interior only)
+    gs.goatPenBounds = {
+        x1: penX + 1,
+        y1: penY + 1,
+        x2: penX + penW - 2,
+        y2: penY + penH - 2
+    };
+}
+
+// ----------------------------------------
+// Fishing pier on south coast (below port)
+// ----------------------------------------
+function createFishingSpot(gs) {
+    const fisherHouse = gs.houses.find(h => h.type === 'fisher');
+    if (!fisherHouse) return;
+
+    // Place pier on south coast near fisher house x position
+    const pierX = fisherHouse.x;
+
+    // Scan south to find where water starts
+    let waterEdge = -1;
+    for (let y = gs.mapHeight - 15; y < gs.mapHeight; y++) {
+        if (pierX >= 0 && pierX < gs.mapWidth && gs.map[y][pierX] === TILE_WATER) {
+            waterEdge = y;
+            break;
+        }
+    }
+    if (waterEdge < 0) return;
+
+    // Path tiles leading down to the water edge
+    for (let y = waterEdge - 2; y < waterEdge; y++) {
+        if (y >= 0 && y < gs.mapHeight) {
+            gs.map[y][pierX] = TILE_PATH;
+        }
+    }
+
+    // Dock tiles extending south into the water
+    for (let y = waterEdge; y < waterEdge + 3 && y < gs.mapHeight; y++) {
+        gs.map[y][pierX] = TILE_DOCK;
+    }
+
+    // Store pier location for fisher NPC placement
+    gs.fishingPier = { x: pierX, y: waterEdge - 1 };
+
+    // Path connecting fisher house to pier
+    createPath(gs, fisherHouse.x, fisherHouse.y, pierX, waterEdge - 2);
 }

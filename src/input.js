@@ -10,10 +10,32 @@ import { travelToDesertIsland, travelToMainIsland, travelToSnowIsland, travelToD
 // Handle interaction (E key)
 // ----------------------------------------
 function handleInteraction(gs) {
+    // Close storage if open
+    if (gs.storageOpen) {
+        gs.storageOpen = false;
+        return;
+    }
+
     // Close shop if open
     if (gs.shopMode) {
         gs.shopMode = false;
         gs.currentShop = null;
+        return;
+    }
+
+    // Bed interaction (player's house) — start sleep animation
+    if (gs.nearBed && !gs.currentDialogue && !gs.sleepAnim.active) {
+        gs.sleepAnim.active = true;
+        gs.sleepAnim.phase = 1;
+        gs.sleepAnim.timer = 0;
+        gs.sleepAnim.targetIsNight = !gs.isNight;
+        return;
+    }
+
+    // Chest storage interaction (player's house)
+    if (gs.nearChest && !gs.currentDialogue) {
+        gs.storageOpen = true;
+        gs.storageMode = 'deposit';
         return;
     }
 
@@ -252,6 +274,64 @@ function handleInventoryConsume(gs, key) {
 }
 
 // ----------------------------------------
+// Handle storage deposit/withdraw
+// ----------------------------------------
+function handleStorageAction(gs, key) {
+    if (key < '1' || key > '9') return;
+    const itemIndex = parseInt(key) - 1;
+
+    if (gs.storageMode === 'deposit') {
+        // Build list of depositable items: food + inventory potions
+        const foodItems = Object.entries(gs.food);
+        const potionItems = Object.entries(gs.inventory).filter(([name]) => name.includes('Potion'));
+        const allItems = [...foodItems, ...potionItems];
+
+        if (itemIndex >= 0 && itemIndex < allItems.length) {
+            const [itemName] = allItems[itemIndex];
+            // Determine source
+            const isFood = gs.food[itemName] !== undefined;
+            const source = isFood ? gs.food : gs.inventory;
+
+            if (source[itemName] > 0) {
+                source[itemName]--;
+                if (source[itemName] <= 0) delete source[itemName];
+
+                if (gs.playerStorage[itemName]) {
+                    gs.playerStorage[itemName]++;
+                } else {
+                    gs.playerStorage[itemName] = 1;
+                }
+                gs.currentDialogue = `Stored: ${itemName}`;
+                gs.dialogueTimer = 0;
+            }
+        }
+    } else {
+        // Withdraw mode
+        const storageItems = Object.entries(gs.playerStorage);
+        if (itemIndex >= 0 && itemIndex < storageItems.length) {
+            const [itemName] = storageItems[itemIndex];
+
+            if (gs.playerStorage[itemName] > 0) {
+                gs.playerStorage[itemName]--;
+                if (gs.playerStorage[itemName] <= 0) delete gs.playerStorage[itemName];
+
+                // Put back into correct category
+                const isPotion = itemName.includes('Potion');
+                const target = isPotion ? gs.inventory : gs.food;
+
+                if (target[itemName]) {
+                    target[itemName]++;
+                } else {
+                    target[itemName] = 1;
+                }
+                gs.currentDialogue = `Retrieved: ${itemName}`;
+                gs.dialogueTimer = 0;
+            }
+        }
+    }
+}
+
+// ----------------------------------------
 // Setup keyboard controls
 // ----------------------------------------
 export function setupControls(gs) {
@@ -276,9 +356,13 @@ export function setupControls(gs) {
             gs.showHelp = !gs.showHelp;
         }
 
-        // Toggle inventory
+        // Toggle inventory / storage mode
         if (key === 'tab') {
-            gs.showInventory = !gs.showInventory;
+            if (gs.storageOpen) {
+                gs.storageMode = gs.storageMode === 'deposit' ? 'withdraw' : 'deposit';
+            } else {
+                gs.showInventory = !gs.showInventory;
+            }
             e.preventDefault();
         }
 
@@ -301,6 +385,11 @@ export function setupControls(gs) {
         // Block with R (requires shield)
         if (key === 'r' && gs.weapons['Rusty Shield']) {
             gs.player.isBlocking = true;
+        }
+
+        // Storage action
+        if (gs.storageOpen) {
+            handleStorageAction(gs, key);
         }
 
         // Shop purchase

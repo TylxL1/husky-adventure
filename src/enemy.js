@@ -14,13 +14,14 @@ export function createEnemies(gs) {
 // Create treasure chest guards
 // ----------------------------------------
 export function createTreasureChest(gs) {
-    let chestX = gs.mapWidth - 12;
-    let chestY = 8;
+    // Place chest in bottom-right corner of the island
+    let chestX = gs.mapWidth - 8;
+    let chestY = gs.mapHeight - 10;
 
     while (gs.map[chestY] && gs.map[chestY][chestX] === TILE_WATER) {
         chestX--;
         if (chestX < gs.mapWidth - 20) {
-            chestY++;
+            chestY--;
             chestX = gs.mapWidth - 12;
         }
     }

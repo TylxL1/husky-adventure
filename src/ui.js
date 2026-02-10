@@ -62,55 +62,61 @@ function getHouseTypeAtPosition(gs, x, y) {
 }
 
 // ----------------------------------------
-// Draw pixel-art hearts (health bar)
+// Draw pixel-art triangles (health bar)
 // ----------------------------------------
 function drawHearts(ctx, gs) {
     const pixelSize = 2;
     const heartSpacing = 36;
     const hearts = Math.ceil(gs.player.maxHealth / 4);
 
-    // 13x11 pixel art heart patterns
+    // 13x13 pixel art upward-pointing triangle patterns
     // 0=transparent, 1=outline, 2=dark red, 3=medium red, 4=light red, 5=dark gray (empty)
     const heartPatternFull = [
-        [0,0,1,1,1,0,0,0,1,1,1,0,0],
-        [0,1,4,4,3,1,0,1,4,4,3,1,0],
-        [1,4,4,4,3,3,1,3,4,4,3,2,1],
-        [1,4,4,4,3,3,3,3,3,3,3,2,1],
-        [1,4,4,3,3,3,3,3,3,3,2,2,1],
+        [0,0,0,0,0,0,1,0,0,0,0,0,0],
+        [0,0,0,0,0,1,3,1,0,0,0,0,0],
+        [0,0,0,0,1,4,3,3,1,0,0,0,0],
+        [0,0,0,0,1,4,3,3,1,0,0,0,0],
+        [0,0,0,1,4,4,3,3,2,1,0,0,0],
+        [0,0,0,1,4,4,3,3,2,1,0,0,0],
+        [0,0,1,4,4,3,3,3,2,2,1,0,0],
+        [0,0,1,4,4,3,3,3,2,2,1,0,0],
+        [0,1,4,4,3,3,3,3,2,2,2,1,0],
+        [0,1,4,4,3,3,3,3,2,2,2,1,0],
+        [1,4,4,3,3,3,3,3,2,2,2,2,1],
         [1,4,3,3,3,3,3,3,3,2,2,2,1],
-        [0,1,3,3,3,3,3,3,2,2,2,1,0],
-        [0,0,1,3,3,3,3,2,2,2,1,0,0],
-        [0,0,0,1,3,3,2,2,2,1,0,0,0],
-        [0,0,0,0,1,2,2,2,1,0,0,0,0],
-        [0,0,0,0,0,1,1,1,0,0,0,0,0]
+        [1,1,1,1,1,1,1,1,1,1,1,1,1]
     ];
 
     const heartPatternHalf = [
-        [0,0,1,1,1,0,0,0,1,1,1,0,0],
-        [0,1,4,4,3,1,0,1,5,5,5,1,0],
-        [1,4,4,4,3,3,1,5,5,5,5,5,1],
-        [1,4,4,4,3,3,3,5,5,5,5,5,1],
+        [0,0,0,0,0,0,1,0,0,0,0,0,0],
+        [0,0,0,0,0,1,3,1,0,0,0,0,0],
+        [0,0,0,0,1,4,3,5,1,0,0,0,0],
+        [0,0,0,0,1,4,3,5,1,0,0,0,0],
+        [0,0,0,1,4,4,3,5,5,1,0,0,0],
+        [0,0,0,1,4,4,3,5,5,1,0,0,0],
+        [0,0,1,4,4,3,3,5,5,5,1,0,0],
+        [0,0,1,4,4,3,3,5,5,5,1,0,0],
+        [0,1,4,4,3,3,3,5,5,5,5,1,0],
+        [0,1,4,4,3,3,3,5,5,5,5,1,0],
         [1,4,4,3,3,3,3,5,5,5,5,5,1],
         [1,4,3,3,3,3,3,5,5,5,5,5,1],
-        [0,1,3,3,3,3,3,5,5,5,5,1,0],
-        [0,0,1,3,3,3,3,5,5,5,1,0,0],
-        [0,0,0,1,3,3,5,5,5,1,0,0,0],
-        [0,0,0,0,1,2,5,5,1,0,0,0,0],
-        [0,0,0,0,0,1,1,1,0,0,0,0,0]
+        [1,1,1,1,1,1,1,1,1,1,1,1,1]
     ];
 
     const heartPatternEmpty = [
-        [0,0,1,1,1,0,0,0,1,1,1,0,0],
-        [0,1,5,5,5,1,0,1,5,5,5,1,0],
-        [1,5,5,5,5,5,1,5,5,5,5,5,1],
-        [1,5,5,5,5,5,5,5,5,5,5,5,1],
-        [1,5,5,5,5,5,5,5,5,5,5,5,1],
-        [1,5,5,5,5,5,5,5,5,5,5,5,1],
-        [0,1,5,5,5,5,5,5,5,5,5,1,0],
-        [0,0,1,5,5,5,5,5,5,5,1,0,0],
-        [0,0,0,1,5,5,5,5,5,1,0,0,0],
+        [0,0,0,0,0,0,1,0,0,0,0,0,0],
+        [0,0,0,0,0,1,5,1,0,0,0,0,0],
         [0,0,0,0,1,5,5,5,1,0,0,0,0],
-        [0,0,0,0,0,1,1,1,0,0,0,0,0]
+        [0,0,0,0,1,5,5,5,1,0,0,0,0],
+        [0,0,0,1,5,5,5,5,5,1,0,0,0],
+        [0,0,0,1,5,5,5,5,5,1,0,0,0],
+        [0,0,1,5,5,5,5,5,5,5,1,0,0],
+        [0,0,1,5,5,5,5,5,5,5,1,0,0],
+        [0,1,5,5,5,5,5,5,5,5,5,1,0],
+        [0,1,5,5,5,5,5,5,5,5,5,1,0],
+        [1,5,5,5,5,5,5,5,5,5,5,5,1],
+        [1,5,5,5,5,5,5,5,5,5,5,5,1],
+        [1,1,1,1,1,1,1,1,1,1,1,1,1]
     ];
 
     const colors = {
@@ -372,6 +378,16 @@ function drawInteractionPrompt(ctx, gs) {
                 message = '🔒 The chest is locked...';
             }
         }
+    }
+
+    // Bed prompt (player's house)
+    if (!message && gs.nearBed && !gs.currentDialogue && !gs.storageOpen && !gs.sleepAnim.active) {
+        message = gs.isNight ? 'Press E to wake up' : 'Press E to sleep';
+    }
+
+    // Chest storage prompt (player's house)
+    if (!message && gs.nearChest && !gs.currentDialogue && !gs.storageOpen) {
+        message = 'Press E to open storage';
     }
 
     // Priority 1: NPC (if no dialogue open)
@@ -1309,6 +1325,112 @@ function drawMapLegend(ctx, gs, startX, startY) {
 }
 
 // ----------------------------------------
+// Draw storage UI
+// ----------------------------------------
+function drawStorageUI(ctx, gs) {
+    if (!gs.storageOpen) return;
+
+    const boxWidth = 550;
+    const boxHeight = 450;
+    const boxX = gs.canvas.width / 2 - boxWidth / 2;
+    const boxY = gs.canvas.height / 2 - boxHeight / 2;
+
+    // Background
+    ctx.fillStyle = 'rgba(40, 30, 20, 0.95)';
+    ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+
+    // Gold border
+    ctx.strokeStyle = '#ffd700';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+
+    // Title with mode
+    ctx.font = 'bold 26px monospace';
+    ctx.fillStyle = '#ffd700';
+    const modeLabel = gs.storageMode === 'deposit' ? 'DEPOSIT' : 'WITHDRAW';
+    ctx.fillText(`📦 STORAGE - ${modeLabel} 📦`, boxX + 30, boxY + 40);
+
+    // Separator
+    ctx.strokeStyle = '#ffd700';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(boxX + 20, boxY + 55);
+    ctx.lineTo(boxX + boxWidth - 20, boxY + 55);
+    ctx.stroke();
+
+    let yOffset = boxY + 85;
+
+    if (gs.storageMode === 'deposit') {
+        // Show food + potions from inventory
+        const foodItems = Object.entries(gs.food);
+        const potionItems = Object.entries(gs.inventory).filter(([name]) => name.includes('Potion'));
+        const allItems = [...foodItems, ...potionItems];
+
+        if (allItems.length === 0) {
+            ctx.font = 'italic 18px monospace';
+            ctx.fillStyle = '#777777';
+            ctx.fillText('No items to deposit.', boxX + 30, yOffset);
+        } else {
+            ctx.font = 'bold 18px monospace';
+            allItems.forEach(([itemName, quantity], index) => {
+                if (index > 8) return; // max 9 items
+
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+                ctx.fillRect(boxX + 30, yOffset - 18, boxWidth - 60, 35);
+                ctx.strokeStyle = '#888';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(boxX + 30, yOffset - 18, boxWidth - 60, 35);
+
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText(`[${index + 1}] ${itemName}`, boxX + 45, yOffset + 5);
+
+                ctx.fillStyle = '#aaaaaa';
+                ctx.fillText(`x${quantity}`, boxX + boxWidth - 110, yOffset + 5);
+
+                yOffset += 40;
+            });
+        }
+    } else {
+        // Withdraw: show playerStorage items
+        const storageItems = Object.entries(gs.playerStorage);
+
+        if (storageItems.length === 0) {
+            ctx.font = 'italic 18px monospace';
+            ctx.fillStyle = '#777777';
+            ctx.fillText('Storage is empty.', boxX + 30, yOffset);
+        } else {
+            ctx.font = 'bold 18px monospace';
+            storageItems.forEach(([itemName, quantity], index) => {
+                if (index > 8) return;
+
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+                ctx.fillRect(boxX + 30, yOffset - 18, boxWidth - 60, 35);
+                ctx.strokeStyle = '#888';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(boxX + 30, yOffset - 18, boxWidth - 60, 35);
+
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText(`[${index + 1}] ${itemName}`, boxX + 45, yOffset + 5);
+
+                ctx.fillStyle = '#aaaaaa';
+                ctx.fillText(`x${quantity}`, boxX + boxWidth - 110, yOffset + 5);
+
+                yOffset += 40;
+            });
+        }
+    }
+
+    // Instructions
+    ctx.font = '15px monospace';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText('Number: Move item', boxX + 30, boxY + boxHeight - 50);
+    ctx.fillStyle = '#ffd700';
+    ctx.fillText(`TAB: Switch to ${gs.storageMode === 'deposit' ? 'WITHDRAW' : 'DEPOSIT'}`, boxX + 30, boxY + boxHeight - 30);
+    ctx.fillStyle = '#aaaaaa';
+    ctx.fillText('E: Close storage', boxX + boxWidth - 200, boxY + boxHeight - 30);
+}
+
+// ----------------------------------------
 // Main drawUI - orchestrates all UI
 // ----------------------------------------
 export function drawUI(ctx, gs) {
@@ -1318,6 +1440,7 @@ export function drawUI(ctx, gs) {
     drawDialogue(ctx, gs);
     drawInteractionPrompt(ctx, gs);
     drawShop(ctx, gs);
+    drawStorageUI(ctx, gs);
     drawLevelUpChoice(ctx, gs);
     drawInventory(ctx, gs);
 }

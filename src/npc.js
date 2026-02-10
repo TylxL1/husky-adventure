@@ -55,6 +55,35 @@ export function createNPCs(gs) {
             });
         }
     }
+
+    // Assign an assistant to each shopkeeper/craftsman
+    const shopTypes = ['blacksmith', 'fisher', 'farmer', 'doctor', 'church', 'merchant', 'elder'];
+    shopTypes.forEach(type => {
+        const house = gs.houses.find(h => h.type === type);
+        if (!house) return;
+        gs.npcs.push({
+            x: house.x + 3,
+            y: house.y + 2,
+            type: 'assistant',
+            direction: 'left',
+            animFrame: 0, animTimer: 0,
+            moveTimer: Math.floor(Math.random() * 60),
+            idleTime: Math.random() * 100 + 50
+        });
+    });
+
+    // Outdoor fisher NPC at the fishing pier
+    if (gs.fishingPier) {
+        gs.npcs.push({
+            x: gs.fishingPier.x,
+            y: gs.fishingPier.y,
+            type: 'fisher',
+            direction: 'right',
+            animFrame: 0, animTimer: 0,
+            moveTimer: 0,
+            idleTime: 200
+        });
+    }
 }
 
 // ----------------------------------------
@@ -267,6 +296,136 @@ export function drawNPCs(ctx, gs) {
         const legOffset = npc.animFrame * 2 * sizeRatio;
         ctx.fillRect(adjustedPx + 10 * sizeRatio, adjustedPy + 26 * sizeRatio - legOffset, 3 * sizeRatio, 4 * sizeRatio);
         ctx.fillRect(adjustedPx + 17 * sizeRatio, adjustedPy + 26 * sizeRatio + legOffset, 3 * sizeRatio, 4 * sizeRatio);
+    });
+}
+
+// ----------------------------------------
+// Create animals (goats in pen)
+// ----------------------------------------
+export function createAnimals(gs) {
+    if (!gs.goatPenBounds) return;
+
+    const pen = gs.goatPenBounds;
+    for (let i = 0; i < 5; i++) {
+        gs.animals.push({
+            type: 'goat',
+            x: pen.x1 + Math.random() * (pen.x2 - pen.x1),
+            y: pen.y1 + Math.random() * (pen.y2 - pen.y1),
+            direction: ['up', 'down', 'left', 'right'][Math.floor(Math.random() * 4)],
+            animFrame: 0,
+            animTimer: 0,
+            moveTimer: Math.floor(Math.random() * 60),
+            penBounds: pen
+        });
+    }
+}
+
+// ----------------------------------------
+// Update animals (bounded wandering)
+// ----------------------------------------
+export function updateAnimals(gs, dt) {
+    gs.animals.forEach(animal => {
+        animal.moveTimer += dt;
+
+        // Change direction every ~120 frames
+        if (animal.moveTimer % 120 < dt) {
+            if (Math.random() > 0.5) {
+                animal.direction = ['up', 'down', 'left', 'right'][Math.floor(Math.random() * 4)];
+            } else {
+                animal.direction = 'idle';
+            }
+        }
+
+        if (animal.direction !== 'idle') {
+            animal.animTimer += dt;
+            if (animal.animTimer > 25) {
+                animal.animFrame = (animal.animFrame + 1) % 2;
+                animal.animTimer = 0;
+            }
+
+            const moveSpeed = 0.005 * dt;
+            let newX = animal.x;
+            let newY = animal.y;
+
+            if (animal.direction === 'up') newY -= moveSpeed;
+            if (animal.direction === 'down') newY += moveSpeed;
+            if (animal.direction === 'left') newX -= moveSpeed;
+            if (animal.direction === 'right') newX += moveSpeed;
+
+            // Clamp to pen bounds
+            const pen = animal.penBounds;
+            if (newX >= pen.x1 && newX <= pen.x2 && newY >= pen.y1 && newY <= pen.y2) {
+                animal.x = newX;
+                animal.y = newY;
+            } else {
+                // Bounce: pick a new direction
+                animal.direction = ['up', 'down', 'left', 'right'][Math.floor(Math.random() * 4)];
+            }
+        } else {
+            animal.animFrame = 0;
+            animal.animTimer = 0;
+        }
+    });
+}
+
+// ----------------------------------------
+// Draw animals (pixel art goats)
+// ----------------------------------------
+export function drawAnimals(ctx, gs) {
+    gs.animals.forEach(animal => {
+        const screenX = (animal.x - gs.camera.x) * TILE_SIZE;
+        const screenY = (animal.y - gs.camera.y) * TILE_SIZE;
+
+        if (screenX < -TILE_SIZE || screenX > gs.canvas.width ||
+            screenY < -TILE_SIZE || screenY > gs.canvas.height) return;
+
+        const size = 34;
+        const px = screenX + (TILE_SIZE - size) / 2;
+        const py = screenY + (TILE_SIZE - size) / 2;
+
+        // Shadow
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+        ctx.beginPath();
+        ctx.ellipse(screenX + TILE_SIZE / 2, screenY + TILE_SIZE / 2 + 6, size / 2.5, size / 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Body (white/cream)
+        ctx.fillStyle = '#F5F0E0';
+        ctx.fillRect(px + 4, py + 12, 22, 12);
+
+        // Body highlight
+        ctx.fillStyle = '#FFFAF0';
+        ctx.fillRect(px + 7, py + 12, 16, 6);
+
+        // Head
+        ctx.fillStyle = '#F5F0E0';
+        ctx.fillRect(px + 22, py + 6, 11, 10);
+
+        // Horns (dark)
+        ctx.fillStyle = '#5C4033';
+        ctx.fillRect(px + 23, py + 2, 3, 5);
+        ctx.fillRect(px + 30, py + 2, 3, 5);
+
+        // Eyes
+        ctx.fillStyle = '#222';
+        ctx.fillRect(px + 26, py + 9, 2, 3);
+        ctx.fillRect(px + 30, py + 9, 2, 3);
+
+        // Pink snout
+        ctx.fillStyle = '#FFAAAA';
+        ctx.fillRect(px + 27, py + 14, 4, 3);
+
+        // Legs with walk animation
+        ctx.fillStyle = '#D2C8B0';
+        const legOffset = animal.animFrame * 2;
+        ctx.fillRect(px + 7, py + 24 - legOffset, 3, 7);
+        ctx.fillRect(px + 13, py + 24 + legOffset, 3, 7);
+        ctx.fillRect(px + 18, py + 24 - legOffset, 3, 7);
+        ctx.fillRect(px + 23, py + 24 + legOffset, 3, 7);
+
+        // Small tail
+        ctx.fillStyle = '#F5F0E0';
+        ctx.fillRect(px + 1, py + 13, 4, 4);
     });
 }
 

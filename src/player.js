@@ -55,8 +55,8 @@ export function canNPCWalkOn(gs, x, y) {
 // Movement
 // ----------------------------------------
 export function handlePlayerMovement(gs, dt) {
-    // Block movement during intro or level-up choice
-    if (gs.levelUpChoice || gs.introActive) return;
+    // Block movement during intro, level-up choice, or storage
+    if (gs.levelUpChoice || gs.introActive || gs.storageOpen || gs.sleepAnim.active) return;
 
     let inputX = 0;
     let inputY = 0;
