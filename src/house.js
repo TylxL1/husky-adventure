@@ -10,6 +10,7 @@ import {
     TILE_POTION_SHELF, TILE_MEDICAL_BED, TILE_ALTAR, TILE_CHURCH_PEW,
     INTERIOR_WIDTH, INTERIOR_HEIGHT
 } from './constants.js';
+import { saveGame } from './save.js';
 
 // ----------------------------------------
 // Check proximity to house doors
@@ -125,6 +126,8 @@ export function exitHouse(gs) {
 
     gs.insideHouse = null;
     gs.houseInterior = null;
+
+    saveGame(gs);
 }
 
 // ----------------------------------------
@@ -157,6 +160,10 @@ export function createHouseInterior(gs, type) {
 
     // Reset interior NPCs
     gs.npcs = [];
+
+    // Shop types that close at night (no shopkeeper spawned)
+    const shopTypes = ['farmer', 'fisher', 'merchant', 'doctor', 'blacksmith'];
+    const isShopClosed = gs.isNight && shopTypes.includes(type);
 
     // Decorate based on house type
     switch (type) {
@@ -200,10 +207,12 @@ export function createHouseInterior(gs, type) {
             // Barrels
             gs.map[8][6] = TILE_BARREL; gs.map[8][11] = TILE_BARREL;
             // NPC farmer (behind counter)
-            gs.npcs.push({
-                x: 8, y: 3, type: 'farmer', direction: 'down',
-                animFrame: 0, animTimer: 0, moveTimer: 0, idleTime: 999999
-            });
+            if (!isShopClosed) {
+                gs.npcs.push({
+                    x: 8, y: 3, type: 'farmer', direction: 'down',
+                    animFrame: 0, animTimer: 0, moveTimer: 0, idleTime: 999999, visible: true
+                });
+            }
             break;
 
         case 'fisher':
@@ -227,10 +236,12 @@ export function createHouseInterior(gs, type) {
             // Chest (behind counter)
             gs.map[3][12] = TILE_CHEST;
             // NPC fisher (behind counter)
-            gs.npcs.push({
-                x: 8, y: 3, type: 'fisher', direction: 'down',
-                animFrame: 0, animTimer: 0, moveTimer: 0, idleTime: 999999
-            });
+            if (!isShopClosed) {
+                gs.npcs.push({
+                    x: 8, y: 3, type: 'fisher', direction: 'down',
+                    animFrame: 0, animTimer: 0, moveTimer: 0, idleTime: 999999, visible: true
+                });
+            }
             break;
 
         case 'merchant':
@@ -254,10 +265,12 @@ export function createHouseInterior(gs, type) {
             gs.map[8][5] = TILE_POTION_SHELF; gs.map[9][5] = TILE_POTION_SHELF;
             gs.map[8][12] = TILE_POTION_SHELF; gs.map[9][12] = TILE_POTION_SHELF;
             // NPC merchant (behind counter)
-            gs.npcs.push({
-                x: 8, y: 3, type: 'merchant', direction: 'down',
-                animFrame: 0, animTimer: 0, moveTimer: 0, idleTime: 999999
-            });
+            if (!isShopClosed) {
+                gs.npcs.push({
+                    x: 8, y: 3, type: 'merchant', direction: 'down',
+                    animFrame: 0, animTimer: 0, moveTimer: 0, idleTime: 999999, visible: true
+                });
+            }
             break;
 
         case 'elder':
@@ -309,10 +322,12 @@ export function createHouseInterior(gs, type) {
             // Chest (behind counter)
             gs.map[3][8] = TILE_CHEST;
             // NPC doctor (behind counter)
-            gs.npcs.push({
-                x: 8, y: 3, type: 'doctor', direction: 'down',
-                animFrame: 0, animTimer: 0, moveTimer: 0, idleTime: 999999
-            });
+            if (!isShopClosed) {
+                gs.npcs.push({
+                    x: 8, y: 3, type: 'doctor', direction: 'down',
+                    animFrame: 0, animTimer: 0, moveTimer: 0, idleTime: 999999, visible: true
+                });
+            }
             break;
 
         case 'blacksmith':
@@ -337,10 +352,12 @@ export function createHouseInterior(gs, type) {
             // Chest (behind counter)
             gs.map[3][8] = TILE_CHEST;
             // NPC blacksmith (behind counter)
-            gs.npcs.push({
-                x: 8, y: 3, type: 'blacksmith', direction: 'down',
-                animFrame: 0, animTimer: 0, moveTimer: 0, idleTime: 999999
-            });
+            if (!isShopClosed) {
+                gs.npcs.push({
+                    x: 8, y: 3, type: 'blacksmith', direction: 'down',
+                    animFrame: 0, animTimer: 0, moveTimer: 0, idleTime: 999999, visible: true
+                });
+            }
             break;
 
         case 'church':

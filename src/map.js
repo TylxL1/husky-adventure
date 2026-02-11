@@ -297,70 +297,103 @@ function placePath(gs, x, y) {
 }
 
 // ----------------------------------------
-// Place lampposts along major paths
+// Place lampposts along paths at regular intervals
 // ----------------------------------------
 function placeLamppostsOnPaths(gs) {
-    const plaza = gs.plazaCenter;
-    if (!plaza) return;
-
-    const houseTargets = [
-        { x: 15, y: 10 },   // player
-        { x: 25, y: 12 },   // villager1
-        { x: 55, y: 10 },   // villager2
-        { x: 68, y: 14 },   // farmer
-        { x: 75, y: 25 },   // merchant
-        { x: 70, y: 35 },   // fisher
-        { x: 60, y: 46 },   // doctor
-        { x: 48, y: 48 },   // elder
-        { x: 20, y: 48 },   // blacksmith
-        { x: 12, y: 40 },   // villager3
-        { x: 30, y: 28 }    // church
-    ];
-
+    const spacing = 8;  // one lamppost every 8 path tiles
     const placed = [];
-    const minSpacing = 8;
+    const minDist = 6;  // minimum distance between any two lampposts
 
-    function tryPlace(px, py) {
-        const tooClose = placed.some(p =>
-            Math.sqrt(Math.pow(p.x - px, 2) + Math.pow(p.y - py, 2)) < minSpacing
-        );
-        if (tooClose) return;
+    function isTooClose(x, y) {
+        return placed.some(p => Math.abs(p.x - x) + Math.abs(p.y - y) < minDist);
+    }
 
-        const offsets = [
+    function tryPlaceAdjacentToPath(px, py) {
+        // Try to place on grass next to the path tile (alternating sides)
+        const sides = [
             { dx: 1, dy: 0 }, { dx: -1, dy: 0 },
-            { dx: 0, dy: 1 }, { dx: 0, dy: -1 },
-            { dx: 1, dy: 1 }, { dx: -1, dy: 1 },
-            { dx: 0, dy: 0 }
+            { dx: 0, dy: 1 }, { dx: 0, dy: -1 }
         ];
-
-        for (const off of offsets) {
-            const lx = px + off.dx;
-            const ly = py + off.dy;
-            if (lx >= 0 && lx < gs.mapWidth && ly >= 0 && ly < gs.mapHeight) {
+        for (const s of sides) {
+            const lx = px + s.dx;
+            const ly = py + s.dy;
+            if (lx >= 1 && lx < gs.mapWidth - 1 && ly >= 1 && ly < gs.mapHeight - 1) {
                 const tile = gs.map[ly][lx];
-                if (tile === TILE_GRASS || tile === TILE_PATH) {
+                if (tile === TILE_GRASS && !isTooClose(lx, ly)) {
                     gs.map[ly][lx] = TILE_LAMPPOST;
                     placed.push({ x: lx, y: ly });
-                    break;
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    // Collect all path tiles
+    const pathTiles = [];
+    for (let y = 0; y < gs.mapHeight; y++) {
+        for (let x = 0; x < gs.mapWidth; x++) {
+            if (gs.map[y][x] === TILE_PATH) {
+                pathTiles.push({ x, y });
+            }
+        }
+    }
+
+    // Walk along path tiles and place lampposts at regular intervals
+    const visited = new Set();
+    const queue = [];
+
+    // Start from first path tile found
+    if (pathTiles.length > 0) {
+        queue.push(pathTiles[0]);
+        visited.add(`${pathTiles[0].x},${pathTiles[0].y}`);
+    }
+
+    let stepCount = 0;
+    while (queue.length > 0) {
+        const cur = queue.shift();
+        stepCount++;
+
+        // Place lamppost every N steps
+        if (stepCount % spacing === 0) {
+            tryPlaceAdjacentToPath(cur.x, cur.y);
+        }
+
+        // Explore neighboring path tiles (4-directional)
+        const dirs = [{ dx: 1, dy: 0 }, { dx: -1, dy: 0 }, { dx: 0, dy: 1 }, { dx: 0, dy: -1 }];
+        for (const d of dirs) {
+            const nx = cur.x + d.dx;
+            const ny = cur.y + d.dy;
+            const key = `${nx},${ny}`;
+            if (!visited.has(key) && nx >= 0 && nx < gs.mapWidth && ny >= 0 && ny < gs.mapHeight) {
+                if (gs.map[ny][nx] === TILE_PATH || gs.map[ny][nx] === TILE_COBBLESTONE) {
+                    visited.add(key);
+                    queue.push({ x: nx, y: ny });
                 }
             }
         }
     }
 
-    // Place at 1/3, 1/2, and 2/3 points of each plaza-to-house route
-    houseTargets.forEach(target => {
-        const pts = [1/3, 1/2, 2/3];
-        pts.forEach(t => {
-            const px = Math.floor(plaza.x + (target.x - plaza.x) * t);
-            const py = Math.floor(plaza.y + (target.y - plaza.y) * t);
-            tryPlace(px, py);
+    // Also place lampposts around the plaza corners (if plaza exists)
+    if (gs.plazaCenter) {
+        const pcx = gs.plazaCenter.x;
+        const pcy = gs.plazaCenter.y;
+        const corners = [
+            { x: pcx - 5, y: pcy - 5 }, { x: pcx + 5, y: pcy - 5 },
+            { x: pcx - 5, y: pcy + 5 }, { x: pcx + 5, y: pcy + 5 }
+        ];
+        corners.forEach(c => {
+            if (c.x >= 0 && c.x < gs.mapWidth && c.y >= 0 && c.y < gs.mapHeight) {
+                if (!isTooClose(c.x, c.y)) {
+                    const tile = gs.map[c.y][c.x];
+                    if (tile === TILE_GRASS || tile === TILE_PATH || tile === TILE_COBBLESTONE) {
+                        gs.map[c.y][c.x] = TILE_LAMPPOST;
+                        placed.push({ x: c.x, y: c.y });
+                    }
+                }
+            }
         });
-    });
-
-    // Extra lampposts near each house entrance
-    houseTargets.forEach(target => {
-        tryPlace(target.x + 2, target.y + 2);
-    });
+    }
 }
 
 // ----------------------------------------

@@ -151,18 +151,55 @@ export const INVINCIBILITY_FRAMES = 60;     // 1 second
 export const SHIELD_REGEN_DELAY = 60;       // 1 second
 export const SHIELD_REGEN_RATE = 0.5;
 export const SHIELD_REPAIR_THRESHOLD = 30;  // 30% durability
+export const QUICK_HEAL_HOLD_THRESHOLD = 15; // frames before hold triggers
+
+// ========================================
+// INVENTORY CAPACITY (unique item types)
+// ========================================
+export const INVENTORY_SLOTS_WEAPONS = 4;
+export const INVENTORY_SLOTS_FOOD = 12;
+export const INVENTORY_SLOTS_ITEMS = 8;
+export const STORAGE_MAX_SLOTS = 30;
+
+// ========================================
+// ========================================
+// DAY/NIGHT CYCLE
+// ========================================
+export const TIME_SPEED = 0.00045;      // hours per frame (24h in ~14.8 min)
+export const DAWN_START = 5.0;           // 5:00 AM
+export const DAWN_END = 7.0;             // 7:00 AM
+export const DUSK_START = 18.0;          // 6:00 PM
+export const DUSK_END = 20.0;            // 8:00 PM
+export const NIGHT_OVERLAY_MAX = 0.55;   // max darkness opacity
+
+export function getTimePhase(time) {
+    if (time >= DAWN_START && time < DAWN_END) return 'dawn';
+    if (time >= DAWN_END && time < DUSK_START) return 'day';
+    if (time >= DUSK_START && time < DUSK_END) return 'dusk';
+    return 'night';
+}
+
+export function getNightOpacity(time) {
+    if (time >= DAWN_END && time < DUSK_START) return 0;  // Day
+    if (time >= DUSK_END || time < DAWN_START) return NIGHT_OVERLAY_MAX;  // Night
+    if (time >= DAWN_START && time < DAWN_END) {
+        return NIGHT_OVERLAY_MAX * (1 - (time - DAWN_START) / (DAWN_END - DAWN_START));
+    }
+    // Dusk
+    return NIGHT_OVERLAY_MAX * ((time - DUSK_START) / (DUSK_END - DUSK_START));
+}
 
 // ========================================
 // INTRO DIALOGUES
 // ========================================
 export const INTRO_DIALOGUES = [
-    "Ah, you're finally awake...",
     "I am the Elder of this village. I knew your father well.",
     "Before he passed away, he entrusted me with something for you.",
     "He told me about a treasure he hid on this island...",
     "This key opens the chest where he kept it.",
     "The chest is located at one of the island's edges.",
     "But be careful... dangerous creatures guard it.",
+    "Before you go, check your storage chest. Your old wooden sword and shield from training should still be there.",
     "Here, take this key. Your father wanted you to have it.",
-    "Good luck, young one. May your father's spirit guide you."
+    "Oh, and press P if you need to see the controls. Good luck, young one."
 ];

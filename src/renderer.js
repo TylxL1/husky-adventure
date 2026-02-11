@@ -12,7 +12,9 @@ import {
     TILE_TOMATO_FIELD, TILE_CARROT_FIELD, TILE_PLOWED_SOIL,
     TILE_SNOW, TILE_ICE, TILE_PINE_TREE, TILE_MOUNTAIN,
     TILE_FENCE,
-    JUMP_VISUAL_SCALE
+    JUMP_VISUAL_SCALE,
+    getNightOpacity, getTimePhase,
+    DAWN_START, DAWN_END, DUSK_START, DUSK_END
 } from './constants.js';
 
 // ========================================
@@ -1056,7 +1058,7 @@ export function drawAttack(ctx, gs) {
 // Draw shield
 // ----------------------------------------
 export function drawShield(ctx, gs) {
-    if (!gs.player.isBlocking || !gs.weapons['Rusty Shield'] || gs.player.shieldBroken) return;
+    if (!gs.player.isBlocking || (!gs.weapons['Rusty Shield'] && !gs.weapons['Wooden Shield']) || gs.player.shieldBroken) return;
 
     const screenX = (gs.player.x - gs.camera.x) * TILE_SIZE;
     const screenY = (gs.player.y - gs.camera.y) * TILE_SIZE - gs.player.jumpHeight * JUMP_VISUAL_SCALE;
@@ -1097,10 +1099,16 @@ export function drawShield(ctx, gs) {
 }
 
 // ----------------------------------------
-// Draw night overlay with light sources
+// Draw night overlay with light sources (continuous day/night cycle)
 // ----------------------------------------
 export function drawNightOverlay(ctx, gs) {
-    if (!gs.isNight || gs.insideHouse) return;
+    if (gs.insideHouse) return;
+
+    const nightOpacity = getNightOpacity(gs.timeOfDay);
+    const phase = getTimePhase(gs.timeOfDay);
+
+    // No overlay during full day
+    if (nightOpacity <= 0 && phase === 'day') return;
 
     const w = gs.canvas.width;
     const h = gs.canvas.height;
@@ -1114,61 +1122,89 @@ export function drawNightOverlay(ctx, gs) {
 
     const nctx = gs._nightCanvas.getContext('2d');
 
-    // Fill with dark night color
+    // Fill with dark night blue, scaled by continuous opacity
     nctx.globalCompositeOperation = 'source-over';
-    nctx.fillStyle = 'rgba(10, 15, 40, 0.55)';
+    nctx.fillStyle = `rgba(10, 15, 40, ${nightOpacity})`;
     nctx.fillRect(0, 0, w, h);
 
-    // Punch light holes using destination-out
-    nctx.globalCompositeOperation = 'destination-out';
-
-    const startX = Math.floor(gs.camera.x);
-    const startY = Math.floor(gs.camera.y);
-    const endX = Math.min(startX + gs.viewportTilesX + 2, gs.mapWidth);
-    const endY = Math.min(startY + gs.viewportTilesY + 2, gs.mapHeight);
-
-    for (let y = startY; y < endY; y++) {
-        for (let x = startX; x < endX; x++) {
-            const tile = gs.map[y][x];
-            let radius = 0;
-
-            if (tile === TILE_LAMPPOST) {
-                radius = 180;
-            } else if (tile === TILE_FOUNTAIN) {
-                radius = 220;
-            }
-
-            if (radius > 0) {
-                const sx = (x + 0.5 - gs.camera.x) * TILE_SIZE;
-                const sy = (y + 0.5 - gs.camera.y) * TILE_SIZE;
-                const grad = nctx.createRadialGradient(sx, sy, 0, sx, sy, radius);
-                grad.addColorStop(0, 'rgba(0, 0, 0, 1)');
-                grad.addColorStop(0.4, 'rgba(0, 0, 0, 0.8)');
-                grad.addColorStop(0.7, 'rgba(0, 0, 0, 0.3)');
-                grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-                nctx.fillStyle = grad;
-                nctx.fillRect(sx - radius, sy - radius, radius * 2, radius * 2);
-            }
+    // Warm sunrise/sunset tint during transitions
+    if (phase === 'dawn') {
+        const t = (gs.timeOfDay - DAWN_START) / (DAWN_END - DAWN_START);
+        // Peak warmth at t=0.5 (around 6:00 AM)
+        const warmth = Math.sin(t * Math.PI) * 0.12;
+        if (warmth > 0) {
+            nctx.globalCompositeOperation = 'lighter';
+            nctx.fillStyle = `rgba(255, 140, 50, ${warmth})`;
+            nctx.fillRect(0, 0, w, h);
+            nctx.globalCompositeOperation = 'source-over';
+        }
+    } else if (phase === 'dusk') {
+        const t = (gs.timeOfDay - DUSK_START) / (DUSK_END - DUSK_START);
+        // Peak warmth at t=0.5 (around 7:00 PM), then fade to blue
+        const warmth = Math.sin(t * Math.PI) * 0.12;
+        if (warmth > 0) {
+            nctx.globalCompositeOperation = 'lighter';
+            nctx.fillStyle = `rgba(255, 100, 30, ${warmth})`;
+            nctx.fillRect(0, 0, w, h);
+            nctx.globalCompositeOperation = 'source-over';
         }
     }
 
-    // Player personal light
-    const playerScreenX = (gs.player.x - gs.camera.x) * TILE_SIZE + TILE_SIZE / 2;
-    const playerScreenY = (gs.player.y - gs.camera.y) * TILE_SIZE + TILE_SIZE / 2;
-    const playerRadius = 130;
-    const playerGrad = nctx.createRadialGradient(
-        playerScreenX, playerScreenY, 0,
-        playerScreenX, playerScreenY, playerRadius
-    );
-    playerGrad.addColorStop(0, 'rgba(0, 0, 0, 1)');
-    playerGrad.addColorStop(0.4, 'rgba(0, 0, 0, 0.8)');
-    playerGrad.addColorStop(0.7, 'rgba(0, 0, 0, 0.3)');
-    playerGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    nctx.fillStyle = playerGrad;
-    nctx.fillRect(
-        playerScreenX - playerRadius, playerScreenY - playerRadius,
-        playerRadius * 2, playerRadius * 2
-    );
+    // Punch light holes using destination-out (scaled by opacity)
+    if (nightOpacity > 0.05) {
+        nctx.globalCompositeOperation = 'destination-out';
+
+        const startX = Math.floor(gs.camera.x);
+        const startY = Math.floor(gs.camera.y);
+        const endX = Math.min(startX + gs.viewportTilesX + 2, gs.mapWidth);
+        const endY = Math.min(startY + gs.viewportTilesY + 2, gs.mapHeight);
+
+        // Light intensity scales with darkness
+        const lightScale = Math.min(1, nightOpacity / 0.3);
+
+        for (let y = startY; y < endY; y++) {
+            for (let x = startX; x < endX; x++) {
+                const tile = gs.map[y][x];
+                let radius = 0;
+
+                if (tile === TILE_LAMPPOST) {
+                    radius = 180;
+                } else if (tile === TILE_FOUNTAIN) {
+                    radius = 220;
+                }
+
+                if (radius > 0) {
+                    const sx = (x + 0.5 - gs.camera.x) * TILE_SIZE;
+                    const sy = (y + 0.5 - gs.camera.y) * TILE_SIZE;
+                    const grad = nctx.createRadialGradient(sx, sy, 0, sx, sy, radius);
+                    grad.addColorStop(0, `rgba(0, 0, 0, ${lightScale})`);
+                    grad.addColorStop(0.4, `rgba(0, 0, 0, ${lightScale * 0.8})`);
+                    grad.addColorStop(0.7, `rgba(0, 0, 0, ${lightScale * 0.3})`);
+                    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                    nctx.fillStyle = grad;
+                    nctx.fillRect(sx - radius, sy - radius, radius * 2, radius * 2);
+                }
+            }
+        }
+
+        // Player personal light
+        const playerScreenX = (gs.player.x - gs.camera.x) * TILE_SIZE + TILE_SIZE / 2;
+        const playerScreenY = (gs.player.y - gs.camera.y) * TILE_SIZE + TILE_SIZE / 2;
+        const playerRadius = 130;
+        const playerGrad = nctx.createRadialGradient(
+            playerScreenX, playerScreenY, 0,
+            playerScreenX, playerScreenY, playerRadius
+        );
+        playerGrad.addColorStop(0, `rgba(0, 0, 0, ${lightScale})`);
+        playerGrad.addColorStop(0.4, `rgba(0, 0, 0, ${lightScale * 0.8})`);
+        playerGrad.addColorStop(0.7, `rgba(0, 0, 0, ${lightScale * 0.3})`);
+        playerGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        nctx.fillStyle = playerGrad;
+        nctx.fillRect(
+            playerScreenX - playerRadius, playerScreenY - playerRadius,
+            playerRadius * 2, playerRadius * 2
+        );
+    }
 
     // Reset composite operation
     nctx.globalCompositeOperation = 'source-over';
@@ -1212,10 +1248,10 @@ export function drawSleepAnimation(ctx, gs) {
         ctx.save();
         ctx.globalAlpha = msgAlpha;
 
-        const message = anim.targetIsNight
-            ? 'Night has fallen...'
-            : 'A new day begins!';
-        const icon = anim.targetIsNight ? '\u{1F319}' : '\u{2600}\u{FE0F}';
+        const message = anim.wasDaytime
+            ? 'You rest until morning...'
+            : 'A new day dawns...';
+        const icon = '\u{2600}\u{FE0F}';
 
         ctx.font = 'bold 36px monospace';
         ctx.fillStyle = '#ffd700';

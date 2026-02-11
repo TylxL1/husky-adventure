@@ -2,6 +2,7 @@
 // ISLAND - Travel between main/desert islands
 // ========================================
 import { TILE_WATER, TILE_PATH, TILE_ROCK, TILE_TREE, TILE_DOCK, TILE_SNOW, TILE_ICE, TILE_PINE_TREE, TILE_MOUNTAIN } from './constants.js';
+import { saveGame } from './save.js';
 
 // ----------------------------------------
 // Check proximity to boats
@@ -83,6 +84,8 @@ export function travelToDesertIsland(gs) {
             gs.player.y = gs.desertDockLocation.y + 1;
         }
     }
+
+    saveGame(gs);
 }
 
 // ----------------------------------------
@@ -100,6 +103,8 @@ export function travelToMainIsland(gs) {
     gs.player.y = gs.savedMainPlayer.y;
 
     gs.currentIsland = 'main';
+
+    saveGame(gs);
 }
 
 // ----------------------------------------
@@ -377,6 +382,8 @@ export function travelToSnowIsland(gs) {
         gs.player.x = gs.snowReturnDockLocation.x + 1;
         gs.player.y = gs.snowReturnDockLocation.y;
     }
+
+    saveGame(gs);
 }
 
 // ----------------------------------------
@@ -400,4 +407,6 @@ export function travelToDesertFromSnow(gs) {
     }
 
     gs.currentIsland = 'desert';
+
+    saveGame(gs);
 }

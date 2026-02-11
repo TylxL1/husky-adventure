@@ -1,10 +1,22 @@
 // ========================================
-// INPUT - Keyboard controls
+// INPUT - Keyboard & mouse controls
 // ========================================
 import { getDialogue } from './npc.js';
-import { performAttack, chooseLevelUpReward, consumeItem } from './combat.js';
+import { chooseLevelUpReward, consumeItem } from './combat.js';
 import { enterHouse, exitHouse } from './house.js';
 import { travelToDesertIsland, travelToMainIsland, travelToSnowIsland, travelToDesertFromSnow } from './island.js';
+import { getItemCategory, canAddItem, canStoreItem, quickHeal } from './inventory.js';
+import { QUICK_HEAL_HOLD_THRESHOLD } from './constants.js';
+import { saveGame } from './save.js';
+
+// ----------------------------------------
+// Weapon icon helper
+// ----------------------------------------
+function getWeaponIcon(name) {
+    if (name.includes('Sword')) return '⚔️';
+    if (name.includes('Shield')) return '🛡️';
+    return '⚔️';
+}
 
 // ----------------------------------------
 // Handle interaction (E key)
@@ -23,12 +35,12 @@ function handleInteraction(gs) {
         return;
     }
 
-    // Bed interaction (player's house) — start sleep animation
+    // Bed interaction (player's house) — sleep until morning
     if (gs.nearBed && !gs.currentDialogue && !gs.sleepAnim.active) {
         gs.sleepAnim.active = true;
         gs.sleepAnim.phase = 1;
         gs.sleepAnim.timer = 0;
-        gs.sleepAnim.targetIsNight = !gs.isNight;
+        gs.sleepAnim.wasDaytime = !gs.isNight;  // Track if sleeping during day for message
         return;
     }
 
@@ -47,7 +59,7 @@ function handleInteraction(gs) {
 
         if (distance < 2) {
             if (gs.enemies.length > 0) {
-                gs.currentDialogue = "⚔️ Defeat all enemies before opening the chest!";
+                gs.currentDialogue = "Defeat all enemies before opening the chest!";
                 gs.dialogueTimer = 0;
                 return;
             }
@@ -56,16 +68,15 @@ function handleInteraction(gs) {
                 gs.treasureFound = true;
                 delete gs.inventory['Treasure Key'];
 
-                gs.money += 500;
-                gs.player.gems += 10;
-                gs.player.maxHealth += 4;
-                gs.player.health = gs.player.maxHealth;
+                gs.money += 100;
+                gs.inventory["Father's Letter"] = 1;
 
-                gs.currentDialogue = "🎉 You found your father's treasure! +500 coins, +10 gems, +1 heart!";
+                gs.currentDialogue = "You found a letter and 100 coins. Press E to read the letter.";
                 gs.dialogueTimer = 0;
+                gs.fatherLetterReady = true;
                 return;
             } else {
-                gs.currentDialogue = "🔒 The chest is locked. You need a key...";
+                gs.currentDialogue = "The chest is locked. You need a key...";
                 gs.dialogueTimer = 0;
                 return;
             }
@@ -94,8 +105,8 @@ function handleInteraction(gs) {
             gs.currentShop = {
                 type: 'blacksmith',
                 items: [
-                    { name: 'Rusty Sword', price: 30, icon: '⚔️', key: '1' },
-                    { name: 'Rusty Shield', price: 20, icon: '🛡️', key: '2' }
+                    { name: 'Rusty Sword', price: 30, icon: '\u2694\uFE0F', key: '1' },
+                    { name: 'Rusty Shield', price: 20, icon: '\uD83D\uDEE1\uFE0F', key: '2' }
                 ]
             };
             return;
@@ -107,8 +118,8 @@ function handleInteraction(gs) {
             gs.currentShop = {
                 type: 'doctor',
                 items: [
-                    { name: 'Bandage', price: 10, icon: '🩹', key: '1' },
-                    { name: 'Medical Kit', price: 25, icon: '💊', key: '2' }
+                    { name: 'Bandage', price: 10, icon: '\uD83E\uDE79', key: '1' },
+                    { name: 'Medical Kit', price: 25, icon: '\uD83D\uDC8A', key: '2' }
                 ]
             };
             return;
@@ -120,9 +131,9 @@ function handleInteraction(gs) {
             gs.currentShop = {
                 type: 'fisher',
                 items: [
-                    { name: 'Fish', price: 6, icon: '🐟', key: '1' },
-                    { name: 'Salmon', price: 8, icon: '🐠', key: '2' },
-                    { name: 'Fish Basket', price: 20, icon: '🧺', key: '3' }
+                    { name: 'Fish', price: 6, icon: '\uD83D\uDC1F', key: '1' },
+                    { name: 'Salmon', price: 8, icon: '\uD83D\uDC20', key: '2' },
+                    { name: 'Fish Basket', price: 20, icon: '\uD83E\uDDFA', key: '3' }
                 ]
             };
             return;
@@ -134,10 +145,10 @@ function handleInteraction(gs) {
             gs.currentShop = {
                 type: 'merchant',
                 items: [
-                    { name: 'Speed Potion', price: 40, icon: '⚡', key: '1' },
-                    { name: 'Invisibility Potion', price: 50, icon: '👻', key: '2' },
-                    { name: 'Strength Potion', price: 45, icon: '💪', key: '3' },
-                    { name: 'Invincibility Potion', price: 60, icon: '💫', key: '4' }
+                    { name: 'Speed Potion', price: 40, icon: '\u26A1', key: '1' },
+                    { name: 'Invisibility Potion', price: 50, icon: '\uD83D\uDC7B', key: '2' },
+                    { name: 'Strength Potion', price: 45, icon: '\uD83D\uDCAA', key: '3' },
+                    { name: 'Invincibility Potion', price: 60, icon: '\uD83D\uDCAB', key: '4' }
                 ]
             };
             return;
@@ -149,10 +160,20 @@ function handleInteraction(gs) {
         return;
     }
 
+    // Father's letter — show after chest opening dialogue
+    if (gs.fatherLetterReady && gs.currentDialogue) {
+        gs.fatherLetterReady = false;
+        gs.currentDialogue = "My dear son, if you read this, I never made it home. But don't grieve. I found peace in my journey and I love you more than words can say. Now carry on what I started. The world beyond these islands holds a truth I couldn't reach. Be brave, son. Your Father";
+        gs.dialogueTimer = 0;
+        gs.dialoguePersist = true;
+        return;
+    }
+
     // Close open dialogue
     if (gs.currentDialogue) {
         gs.currentDialogue = null;
         gs.dialogueTimer = 0;
+        gs.dialoguePersist = false;
         return;
     }
 
@@ -190,31 +211,91 @@ function handleInteraction(gs) {
 }
 
 // ----------------------------------------
-// Advance intro dialogue
+// Advance intro (multi-phase cinematic)
 // ----------------------------------------
 function advanceIntro(gs) {
-    gs.introDialogueIndex++;
+    if (gs.introPhase === 0) {
+        // Phase 0 → 1: Player gets up from bed onto floor next to it
+        gs.introPhase = 1;
+        gs.player.x = 5;
+        gs.player.y = 3.5;
+        gs.player.direction = 'down';
+        return;
+    }
 
-    if (gs.introDialogueIndex >= gs.introDialogues.length) {
-        gs.introActive = false;
-        gs.introElder = null;
+    if (gs.introPhase === 1) {
+        // Phase 1: Player is walking to door — E does nothing
+        return;
+    }
 
-        gs.inventory['Treasure Key'] = 1;
-        gs.currentDialogue = '🔑 You received the Treasure Key!';
-        gs.dialogueTimer = 0;
+    if (gs.introPhase === 2) {
+        // Phase 2 → 3: Open door, Elder appears
+        gs.introPhase = 3;
+        gs.introElder = {
+            x: 8.5,
+            y: 12,
+            type: 'elder',
+            direction: 'up',
+            animFrame: 0,
+            animTimer: 0
+        };
+        gs.player.direction = 'down';
+        return;
+    }
+
+    if (gs.introPhase === 3) {
+        // Phase 3 → 4: Both sit at the table, dialogue begins
+        gs.introPhase = 4;
+        gs.introDialogueIndex = 0;
+
+        // Player sits at south chair of table (tile [8][9])
+        gs.player.x = 9;
+        gs.player.y = 8;
+        gs.player.direction = 'up';
+
+        // Elder sits at north chair of table (tile [5][9])
+        gs.introElder.x = 9;
+        gs.introElder.y = 5;
+        gs.introElder.direction = 'down';
+        return;
+    }
+
+    if (gs.introPhase === 4) {
+        // Phase 4: Advance seated dialogue
+        gs.introDialogueIndex++;
+
+        if (gs.introDialogueIndex >= gs.introDialogues.length) {
+            // Intro complete
+            gs.introActive = false;
+            gs.introElder = null;
+
+            // Move player off the chair to a free floor tile
+            gs.player.x = 9;
+            gs.player.y = 9.5;
+            gs.player.direction = 'down';
+
+            gs.inventory['Treasure Key'] = 1;
+            gs.currentDialogue = 'You received the Treasure Key!';
+            gs.dialogueTimer = 0;
+        }
     }
 }
 
 // ----------------------------------------
-// Handle shop purchase
+// Handle shop purchase (with capacity check)
 // ----------------------------------------
-function handleShopPurchase(gs, key) {
-    if (key < '1' || key > '9') return;
-    const itemIndex = parseInt(key) - 1;
+export function handleShopPurchaseByIndex(gs, itemIndex) {
     if (itemIndex < 0 || itemIndex >= gs.currentShop.items.length) return;
 
     const item = gs.currentShop.items[itemIndex];
     if (gs.money >= item.price) {
+        // Capacity check before purchase
+        if (!canAddItem(gs, item.name)) {
+            gs.currentDialogue = 'Inventory full! Store some items first.';
+            gs.dialogueTimer = 0;
+            return;
+        }
+
         gs.money -= item.price;
 
         if (gs.currentShop.type === 'blacksmith') {
@@ -255,55 +336,76 @@ function handleShopPurchase(gs, key) {
     }
 }
 
+function handleShopPurchase(gs, key) {
+    if (key < '1' || key > '9') return;
+    handleShopPurchaseByIndex(gs, parseInt(key) - 1);
+}
+
 // ----------------------------------------
-// Handle inventory consumption
+// Handle inventory consumption (tab-aware)
 // ----------------------------------------
 function handleInventoryConsume(gs, key) {
     const itemIndex = parseInt(key) - 1;
+    if (isNaN(itemIndex) || itemIndex < 0) return;
 
-    const foodItems = Object.entries(gs.food);
-    const objectItems = Object.entries(gs.inventory).filter(([name]) => {
-        return name.includes('Potion');
-    });
-    const allConsumables = [...foodItems, ...objectItems];
-
-    if (itemIndex >= 0 && itemIndex < allConsumables.length) {
-        const [itemName] = allConsumables[itemIndex];
-        consumeItem(gs, itemName);
+    // Consume based on active tab
+    if (gs.inventoryTab === 1) {
+        // Food tab
+        const foodItems = Object.entries(gs.food);
+        if (itemIndex < foodItems.length) {
+            consumeItem(gs, foodItems[itemIndex][0]);
+        }
+    } else if (gs.inventoryTab === 2) {
+        // Items tab - only potions are consumable
+        const items = Object.entries(gs.inventory).filter(([name]) => name.includes('Potion'));
+        if (itemIndex < items.length) {
+            consumeItem(gs, items[itemIndex][0]);
+        }
     }
 }
 
 // ----------------------------------------
-// Handle storage deposit/withdraw
+// Handle storage deposit/withdraw (all items)
 // ----------------------------------------
 function handleStorageAction(gs, key) {
     if (key < '1' || key > '9') return;
     const itemIndex = parseInt(key) - 1;
 
     if (gs.storageMode === 'deposit') {
-        // Build list of depositable items: food + inventory potions
-        const foodItems = Object.entries(gs.food);
-        const potionItems = Object.entries(gs.inventory).filter(([name]) => name.includes('Potion'));
-        const allItems = [...foodItems, ...potionItems];
+        // Build list of ALL depositable items: weapons + food + inventory items
+        const weaponItems = Object.entries(gs.weapons).map(([name, data]) => [name, 1, 'weapon']);
+        const foodItems = Object.entries(gs.food).map(([name, qty]) => [name, qty, 'food']);
+        const invItems = Object.entries(gs.inventory).map(([name, qty]) => [name, qty, 'item']);
+        const allItems = [...weaponItems, ...foodItems, ...invItems];
 
         if (itemIndex >= 0 && itemIndex < allItems.length) {
-            const [itemName] = allItems[itemIndex];
-            // Determine source
-            const isFood = gs.food[itemName] !== undefined;
-            const source = isFood ? gs.food : gs.inventory;
+            const [itemName, , category] = allItems[itemIndex];
 
-            if (source[itemName] > 0) {
-                source[itemName]--;
-                if (source[itemName] <= 0) delete source[itemName];
-
-                if (gs.playerStorage[itemName]) {
-                    gs.playerStorage[itemName]++;
-                } else {
-                    gs.playerStorage[itemName] = 1;
-                }
-                gs.currentDialogue = `Stored: ${itemName}`;
+            // Check storage capacity for new item types
+            if (!gs.playerStorage[itemName] && !canStoreItem(gs)) {
+                gs.currentDialogue = 'Storage is full!';
                 gs.dialogueTimer = 0;
+                return;
             }
+
+            if (category === 'weapon') {
+                delete gs.weapons[itemName];
+                if (gs.equippedWeapon === itemName) gs.equippedWeapon = null;
+            } else if (category === 'food') {
+                gs.food[itemName]--;
+                if (gs.food[itemName] <= 0) delete gs.food[itemName];
+            } else {
+                gs.inventory[itemName]--;
+                if (gs.inventory[itemName] <= 0) delete gs.inventory[itemName];
+            }
+
+            if (gs.playerStorage[itemName]) {
+                gs.playerStorage[itemName]++;
+            } else {
+                gs.playerStorage[itemName] = 1;
+            }
+            gs.currentDialogue = `Stored: ${itemName}`;
+            gs.dialogueTimer = 0;
         }
     } else {
         // Withdraw mode
@@ -312,17 +414,32 @@ function handleStorageAction(gs, key) {
             const [itemName] = storageItems[itemIndex];
 
             if (gs.playerStorage[itemName] > 0) {
+                // Check capacity before withdrawing
+                if (!canAddItem(gs, itemName)) {
+                    gs.currentDialogue = 'Inventory full!';
+                    gs.dialogueTimer = 0;
+                    return;
+                }
+
                 gs.playerStorage[itemName]--;
                 if (gs.playerStorage[itemName] <= 0) delete gs.playerStorage[itemName];
 
-                // Put back into correct category
-                const isPotion = itemName.includes('Potion');
-                const target = isPotion ? gs.inventory : gs.food;
-
-                if (target[itemName]) {
-                    target[itemName]++;
+                // Route to correct category
+                const category = getItemCategory(itemName);
+                if (category === 'weapon') {
+                    gs.weapons[itemName] = { icon: getWeaponIcon(itemName) };
+                } else if (category === 'food') {
+                    if (gs.food[itemName]) {
+                        gs.food[itemName]++;
+                    } else {
+                        gs.food[itemName] = 1;
+                    }
                 } else {
-                    target[itemName] = 1;
+                    if (gs.inventory[itemName]) {
+                        gs.inventory[itemName]++;
+                    } else {
+                        gs.inventory[itemName] = 1;
+                    }
                 }
                 gs.currentDialogue = `Retrieved: ${itemName}`;
                 gs.dialogueTimer = 0;
@@ -332,9 +449,113 @@ function handleStorageAction(gs, key) {
 }
 
 // ----------------------------------------
-// Setup keyboard controls
+// Handle inventory click (mouse)
+// ----------------------------------------
+export function handleInventoryClick(gs, itemName, category) {
+    if (category === 'weapon') {
+        // Equip weapon
+        gs.equippedWeapon = itemName;
+        gs.currentDialogue = `Equipped: ${itemName}`;
+        gs.dialogueTimer = 0;
+    } else if (category === 'food') {
+        consumeItem(gs, itemName);
+    } else if (category === 'item') {
+        if (itemName.includes('Potion')) {
+            consumeItem(gs, itemName);
+        }
+    }
+}
+
+// ----------------------------------------
+// Handle storage click (mouse)
+// ----------------------------------------
+export function handleStorageClick(gs, itemName, action) {
+    if (action === 'deposit') {
+        const category = getItemCategory(itemName);
+        if (!gs.playerStorage[itemName] && !canStoreItem(gs)) {
+            gs.currentDialogue = 'Storage is full!';
+            gs.dialogueTimer = 0;
+            return;
+        }
+
+        if (category === 'weapon') {
+            delete gs.weapons[itemName];
+            if (gs.equippedWeapon === itemName) gs.equippedWeapon = null;
+        } else if (category === 'food') {
+            gs.food[itemName]--;
+            if (gs.food[itemName] <= 0) delete gs.food[itemName];
+        } else {
+            gs.inventory[itemName]--;
+            if (gs.inventory[itemName] <= 0) delete gs.inventory[itemName];
+        }
+
+        if (gs.playerStorage[itemName]) {
+            gs.playerStorage[itemName]++;
+        } else {
+            gs.playerStorage[itemName] = 1;
+        }
+        gs.currentDialogue = `Stored: ${itemName}`;
+        gs.dialogueTimer = 0;
+    } else {
+        // Withdraw
+        if (!canAddItem(gs, itemName)) {
+            gs.currentDialogue = 'Inventory full!';
+            gs.dialogueTimer = 0;
+            return;
+        }
+
+        gs.playerStorage[itemName]--;
+        if (gs.playerStorage[itemName] <= 0) delete gs.playerStorage[itemName];
+
+        const category = getItemCategory(itemName);
+        if (category === 'weapon') {
+            gs.weapons[itemName] = { icon: getWeaponIcon(itemName) };
+        } else if (category === 'food') {
+            if (gs.food[itemName]) gs.food[itemName]++;
+            else gs.food[itemName] = 1;
+        } else {
+            if (gs.inventory[itemName]) gs.inventory[itemName]++;
+            else gs.inventory[itemName] = 1;
+        }
+        gs.currentDialogue = `Retrieved: ${itemName}`;
+        gs.dialogueTimer = 0;
+    }
+}
+
+// ----------------------------------------
+// Setup keyboard & mouse controls
 // ----------------------------------------
 export function setupControls(gs) {
+    // ---- Mouse listeners ----
+    gs.canvas.addEventListener('mousemove', (e) => {
+        const rect = gs.canvas.getBoundingClientRect();
+        gs.mouse.x = e.clientX - rect.left;
+        gs.mouse.y = e.clientY - rect.top;
+    });
+
+    gs.canvas.addEventListener('mousedown', (e) => {
+        if (e.button === 0) {
+            gs.mouse.leftDown = true;
+            gs.mouse.leftClick = true;
+        } else if (e.button === 2) {
+            gs.mouse.rightDown = true;
+            gs.mouse.rightClick = true;
+        }
+    });
+
+    gs.canvas.addEventListener('mouseup', (e) => {
+        if (e.button === 0) {
+            gs.mouse.leftDown = false;
+        } else if (e.button === 2) {
+            gs.mouse.rightDown = false;
+        }
+    });
+
+    gs.canvas.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+    });
+
+    // ---- Keyboard listeners ----
     window.addEventListener('keydown', (e) => {
         const key = e.key.toLowerCase();
         gs.keys[key] = true;
@@ -356,7 +577,7 @@ export function setupControls(gs) {
             gs.showHelp = !gs.showHelp;
         }
 
-        // Toggle inventory / storage mode
+        // Toggle inventory / storage mode / tab navigation
         if (key === 'tab') {
             if (gs.storageOpen) {
                 gs.storageMode = gs.storageMode === 'deposit' ? 'withdraw' : 'deposit';
@@ -364,6 +585,18 @@ export function setupControls(gs) {
                 gs.showInventory = !gs.showInventory;
             }
             e.preventDefault();
+        }
+
+        // Inventory tab navigation with arrow keys
+        if (gs.showInventory && !gs.shopMode) {
+            if (key === 'arrowleft') {
+                gs.inventoryTab = (gs.inventoryTab + 2) % 3;
+                e.preventDefault();
+            }
+            if (key === 'arrowright') {
+                gs.inventoryTab = (gs.inventoryTab + 1) % 3;
+                e.preventDefault();
+            }
         }
 
         // Interact / advance intro
@@ -375,16 +608,17 @@ export function setupControls(gs) {
             }
         }
 
-        // Attack with F (requires sword)
-        if (key === 'f' && !gs.player.isAttacking && gs.weapons['Rusty Sword']) {
-            gs.player.isAttacking = true;
-            gs.player.attackTimer = gs.player.attackDuration;
-            performAttack(gs);
+        // Quick heal (A key)
+        if (key === 'a' && !gs.quickHealPressed) {
+            gs.quickHealPressed = true;
+            gs.quickHealTimer = 0;
         }
 
-        // Block with R (requires shield)
-        if (key === 'r' && gs.weapons['Rusty Shield']) {
-            gs.player.isBlocking = true;
+        // Manual save (K key)
+        if (key === 'k' && !gs.introActive) {
+            saveGame(gs);
+            gs.currentDialogue = 'Game saved!';
+            gs.dialogueTimer = 0;
         }
 
         // Storage action
@@ -416,9 +650,13 @@ export function setupControls(gs) {
         const key = e.key.toLowerCase();
         gs.keys[key] = false;
 
-        // Stop blocking when R is released
-        if (key === 'r') {
-            gs.player.isBlocking = false;
+        // Quick heal: short tap = heal, long hold handled in update()
+        if (key === 'a') {
+            if (gs.quickHealPressed && gs.quickHealTimer < QUICK_HEAL_HOLD_THRESHOLD) {
+                quickHeal(gs);
+            }
+            gs.quickHealPressed = false;
+            gs.quickHealTimer = 0;
         }
     });
 }

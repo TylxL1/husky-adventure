@@ -5,6 +5,7 @@ import {
     INVINCIBILITY_FRAMES, SHIELD_REGEN_DELAY,
     SHIELD_REGEN_RATE, SHIELD_REPAIR_THRESHOLD
 } from './constants.js';
+import { saveGame } from './save.js';
 
 // ----------------------------------------
 // Update combat timers & collisions
@@ -74,7 +75,7 @@ export function updateCombat(gs, dt) {
                     return;
                 }
 
-                if (gs.player.isBlocking && gs.weapons['Rusty Shield'] && !gs.player.shieldBroken) {
+                if (gs.player.isBlocking && (gs.weapons['Rusty Shield'] || gs.weapons['Wooden Shield']) && !gs.player.shieldBroken) {
                     const damageToShield = enemy.damage * 20;
                     gs.player.shieldDurability -= damageToShield;
 
@@ -148,17 +149,11 @@ export function performAttack(gs) {
         if (distance < 1.5) {
             enemy.health -= damage;
 
-            if (distance > 0) {
-                enemy.knockbackX = -(distX / distance) * 0.5;
-                enemy.knockbackY = -(distY / distance) * 0.5;
-            }
-
             if (enemy.health <= 0) {
                 enemiesToRemove.push(index);
                 gs.player.xp += enemy.xpReward;
-                gs.money += Math.floor(enemy.xpReward / 3);
 
-                gs.currentDialogue = `+${enemy.xpReward} XP! +${Math.floor(enemy.xpReward / 3)} coins!`;
+                gs.currentDialogue = `+${enemy.xpReward} XP!`;
                 gs.dialogueTimer = 0;
 
                 if (gs.player.xp >= gs.player.xpToNextLevel) {
@@ -174,6 +169,11 @@ export function performAttack(gs) {
     // Remove dead enemies (reverse order)
     for (let i = enemiesToRemove.length - 1; i >= 0; i--) {
         gs.enemies.splice(enemiesToRemove[i], 1);
+    }
+
+    // Auto-save after combat kills
+    if (enemiesToRemove.length > 0) {
+        saveGame(gs);
     }
 }
 

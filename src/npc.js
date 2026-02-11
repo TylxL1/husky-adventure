@@ -1,15 +1,30 @@
 // ========================================
 // NPC - Creation, AI, dialogues, drawing
 // ========================================
-import { TILE_SIZE, TILE_WATER, TILE_ROCK, TILE_TREE, TILE_HOUSE, TILE_DOCK } from './constants.js';
+import { TILE_SIZE, TILE_WATER, TILE_ROCK, TILE_TREE, TILE_HOUSE, TILE_DOCK, getTimePhase } from './constants.js';
 import { canNPCWalkOn } from './player.js';
 import { lightenColor, darkenColor } from './renderer.js';
+
+// ----------------------------------------
+// NPC speed by type
+// ----------------------------------------
+function getNPCSpeed(npc) {
+    switch (npc.type) {
+        case 'farmer': return 0.02;
+        case 'fisher': return 0.02;
+        case 'merchant': return 0.025;
+        case 'doctor': return 0.015;
+        case 'elder': return 0.012;
+        case 'child': return 0.02;
+        default: return 0.015;
+    }
+}
 
 // ----------------------------------------
 // Create outdoor NPCs
 // ----------------------------------------
 export function createNPCs(gs) {
-    const npcTypes = ['man', 'woman', 'child', 'assistant'];
+    const npcTypes = ['man', 'woman', 'child', 'man'];
     const numNPCs = 12;
 
     for (let i = 0; i < numNPCs; i++) {
@@ -48,41 +63,315 @@ export function createNPCs(gs) {
             const type = npcTypes[i % npcTypes.length];
             gs.npcs.push({
                 x, y, type,
+                homeX: x, homeY: y,
+                targetX: null, targetY: null,
+                behavior: 'wander',
+                pauseTimer: 0,
+                wanderRadius: 15,
                 direction: ['up', 'down', 'left', 'right'][Math.floor(Math.random() * 4)],
                 animFrame: 0, animTimer: 0,
                 moveTimer: Math.floor(Math.random() * 60),
-                idleTime: Math.random() * 100 + 50
+                idleTime: Math.random() * 100 + 50,
+                visible: true,
+                wakeTime: 5.5 + Math.random()  // Generic NPCs: 5:30-6:30
             });
         }
     }
 
-    // Assign an assistant to each shopkeeper/craftsman
-    const shopTypes = ['blacksmith', 'fisher', 'farmer', 'doctor', 'church', 'merchant', 'elder'];
-    shopTypes.forEach(type => {
-        const house = gs.houses.find(h => h.type === type);
+    // Assign role-specific NPCs to each shopkeeper/craftsman house
+    const roleMap = {
+        'blacksmith': 'blacksmith',
+        'fisher': 'fisher',
+        'farmer': 'farmer',
+        'doctor': 'doctor',
+        'church': 'priest',
+        'merchant': 'merchant',
+        'elder': 'elder'
+    };
+
+    const wakeTimeByRole = {
+        'farmer': 5.0, 'fisher': 5.5, 'blacksmith': 6.0,
+        'elder': 6.5, 'doctor': 6.5, 'merchant': 7.0, 'priest': 6.0
+    };
+
+    Object.entries(roleMap).forEach(([houseType, npcType]) => {
+        const house = gs.houses.find(h => h.type === houseType);
         if (!house) return;
         gs.npcs.push({
             x: house.x + 3,
             y: house.y + 2,
-            type: 'assistant',
+            type: npcType,
+            homeX: house.x + 3,
+            homeY: house.y + 2,
+            targetX: null, targetY: null,
+            behavior: 'wander',
+            pauseTimer: 0,
+            wanderRadius: 15,
             direction: 'left',
             animFrame: 0, animTimer: 0,
             moveTimer: Math.floor(Math.random() * 60),
-            idleTime: Math.random() * 100 + 50
+            idleTime: Math.random() * 100 + 50,
+            visible: true,
+            wakeTime: wakeTimeByRole[npcType] || 6.0
         });
     });
+}
 
-    // Outdoor fisher NPC at the fishing pier
-    if (gs.fishingPier) {
-        gs.npcs.push({
-            x: gs.fishingPier.x,
-            y: gs.fishingPier.y,
-            type: 'fisher',
-            direction: 'right',
-            animFrame: 0, animTimer: 0,
-            moveTimer: 0,
-            idleTime: 200
-        });
+// ----------------------------------------
+// Choose next behavior based on NPC role
+// ----------------------------------------
+function chooseNextBehavior(npc, gs) {
+    const roll = Math.random();
+
+    switch (npc.type) {
+        case 'farmer': {
+            const farmerHouse = gs.houses.find(h => h.type === 'farmer');
+            if (farmerHouse && roll < 0.6) {
+                // Go to fields
+                npc.targetX = farmerHouse.x + 3 + Math.random() * 8;
+                npc.targetY = farmerHouse.y - 2 + Math.random() * 6;
+                npc.behavior = 'go_to_target';
+                npc.pauseTimer = 200 + Math.random() * 200;
+            } else {
+                npc.behavior = 'return_home';
+            }
+            break;
+        }
+        case 'fisher': {
+            if (gs.fishingPier && roll < 0.6) {
+                // Go to pier
+                npc.targetX = gs.fishingPier.x;
+                npc.targetY = gs.fishingPier.y - 1;
+                npc.behavior = 'go_to_target';
+                npc.pauseTimer = 300 + Math.random() * 200;
+            } else {
+                npc.behavior = 'return_home';
+            }
+            break;
+        }
+        case 'blacksmith': {
+            if (gs.plazaCenter && roll < 0.3) {
+                // Walk to plaza
+                npc.targetX = gs.plazaCenter.x + (Math.random() - 0.5) * 8;
+                npc.targetY = gs.plazaCenter.y + (Math.random() - 0.5) * 8;
+                npc.behavior = 'go_to_target';
+                npc.pauseTimer = 100 + Math.random() * 150;
+            } else {
+                // Wander near home
+                npc.behavior = 'wander';
+            }
+            break;
+        }
+        case 'merchant': {
+            if (gs.plazaCenter && roll < 0.6) {
+                // Go to plaza
+                npc.targetX = gs.plazaCenter.x + (Math.random() - 0.5) * 8;
+                npc.targetY = gs.plazaCenter.y + (Math.random() - 0.5) * 8;
+                npc.behavior = 'go_to_target';
+                npc.pauseTimer = 150 + Math.random() * 200;
+            } else {
+                npc.behavior = 'return_home';
+            }
+            break;
+        }
+        case 'doctor': {
+            // Walk to random houses
+            if (gs.houses.length > 0 && roll < 0.5) {
+                const randomHouse = gs.houses[Math.floor(Math.random() * gs.houses.length)];
+                npc.targetX = randomHouse.x + 1;
+                npc.targetY = randomHouse.y + 3;
+                npc.behavior = 'go_to_target';
+                npc.pauseTimer = 150 + Math.random() * 150;
+            } else {
+                npc.behavior = 'return_home';
+            }
+            break;
+        }
+        case 'elder': {
+            if (gs.plazaCenter && roll < 0.5) {
+                // Go to plaza fountain
+                npc.targetX = gs.plazaCenter.x + (Math.random() - 0.5) * 4;
+                npc.targetY = gs.plazaCenter.y + (Math.random() - 0.5) * 4;
+                npc.behavior = 'go_to_target';
+                npc.pauseTimer = 400 + Math.random() * 200;
+            } else {
+                npc.behavior = 'return_home';
+            }
+            break;
+        }
+        case 'priest': {
+            if (gs.plazaCenter && roll < 0.4) {
+                // Go to plaza bench area
+                npc.targetX = gs.plazaCenter.x + (Math.random() - 0.5) * 6;
+                npc.targetY = gs.plazaCenter.y - 3 + Math.random() * 6;
+                npc.behavior = 'go_to_target';
+                npc.pauseTimer = 200 + Math.random() * 200;
+            } else {
+                npc.behavior = 'return_home';
+            }
+            break;
+        }
+        default: {
+            // man, woman, child — wander or return home
+            if (roll < 0.3) {
+                npc.behavior = 'return_home';
+            } else {
+                npc.behavior = 'wander';
+            }
+            break;
+        }
+    }
+}
+
+// ----------------------------------------
+// Update NPC behavior state machine
+// ----------------------------------------
+function updateNPCBehavior(npc, gs, dt) {
+    // Night mode: force NPCs home
+    if (gs.isNight && npc.behavior !== 'return_home' && npc.behavior !== 'pause') {
+        const distHome = Math.sqrt(
+            Math.pow(npc.x - npc.homeX, 2) +
+            Math.pow(npc.y - npc.homeY, 2)
+        );
+        if (distHome > 3) {
+            npc.behavior = 'return_home';
+            return;
+        }
+    }
+
+    switch (npc.behavior) {
+        case 'pause':
+            npc.pauseTimer -= dt;
+            if (npc.pauseTimer <= 0) {
+                chooseNextBehavior(npc, gs);
+            }
+            break;
+
+        case 'wander':
+            npc.moveTimer += dt;
+            if (npc.moveTimer % 120 < dt) {
+                // Check wander radius
+                const distHome = Math.sqrt(
+                    Math.pow(npc.x - npc.homeX, 2) +
+                    Math.pow(npc.y - npc.homeY, 2)
+                );
+                if (distHome > npc.wanderRadius) {
+                    npc.behavior = 'return_home';
+                } else if (Math.random() > 0.3) {
+                    npc.direction = ['up', 'down', 'left', 'right'][Math.floor(Math.random() * 4)];
+                } else {
+                    // Pause briefly, then choose next
+                    npc.behavior = 'pause';
+                    npc.pauseTimer = 60 + Math.random() * 120;
+                }
+            }
+            break;
+
+        case 'go_to_target': {
+            if (npc.targetX === null || npc.targetY === null) {
+                npc.behavior = 'pause';
+                npc.pauseTimer = 60;
+                break;
+            }
+            const dx = npc.targetX - npc.x;
+            const dy = npc.targetY - npc.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < 1.5) {
+                // Arrived — pause with stored timer
+                npc.behavior = 'pause';
+                // pauseTimer was set by chooseNextBehavior
+            } else {
+                // Update direction for animation
+                if (Math.abs(dx) > Math.abs(dy)) {
+                    npc.direction = dx > 0 ? 'right' : 'left';
+                } else {
+                    npc.direction = dy > 0 ? 'down' : 'up';
+                }
+            }
+            break;
+        }
+
+        case 'return_home': {
+            const dx = npc.homeX - npc.x;
+            const dy = npc.homeY - npc.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < 1.5) {
+                npc.behavior = 'pause';
+                npc.pauseTimer = 100 + Math.random() * 200;
+            } else {
+                if (Math.abs(dx) > Math.abs(dy)) {
+                    npc.direction = dx > 0 ? 'right' : 'left';
+                } else {
+                    npc.direction = dy > 0 ? 'down' : 'up';
+                }
+            }
+            break;
+        }
+    }
+}
+
+// ----------------------------------------
+// Update NPC movement (position changes)
+// ----------------------------------------
+function updateNPCMovement(npc, gs, dt) {
+    if (npc.behavior === 'pause') return;
+
+    const speed = getNPCSpeed(npc) * dt;
+    let newX = npc.x;
+    let newY = npc.y;
+
+    if (npc.behavior === 'go_to_target' && npc.targetX !== null) {
+        const dx = npc.targetX - npc.x;
+        const dy = npc.targetY - npc.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > 0.1) {
+            newX += (dx / dist) * speed;
+            newY += (dy / dist) * speed;
+        }
+    } else if (npc.behavior === 'return_home') {
+        const dx = npc.homeX - npc.x;
+        const dy = npc.homeY - npc.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > 0.1) {
+            newX += (dx / dist) * speed;
+            newY += (dy / dist) * speed;
+        }
+    } else if (npc.behavior === 'wander') {
+        if (npc.direction === 'up') newY -= speed;
+        if (npc.direction === 'down') newY += speed;
+        if (npc.direction === 'left') newX -= speed;
+        if (npc.direction === 'right') newX += speed;
+    }
+
+    if (canNPCWalkOn(gs, newX, newY)) {
+        npc.x = newX;
+        npc.y = newY;
+    } else {
+        // Collision — pick new direction or go home
+        if (npc.behavior === 'wander') {
+            npc.direction = ['up', 'down', 'left', 'right'][Math.floor(Math.random() * 4)];
+        } else {
+            // Target blocked — give up and pause
+            npc.behavior = 'pause';
+            npc.pauseTimer = 60 + Math.random() * 60;
+        }
+    }
+}
+
+// ----------------------------------------
+// Update NPC animation (frame toggle)
+// ----------------------------------------
+function updateNPCAnimation(npc, gs, dt) {
+    if (npc.behavior === 'pause') {
+        npc.animFrame = 0;
+        npc.animTimer = 0;
+        return;
+    }
+
+    npc.animTimer += dt;
+    if (npc.animTimer > 20) {
+        npc.animFrame = (npc.animFrame + 1) % 2;
+        npc.animTimer = 0;
     }
 }
 
@@ -90,44 +379,61 @@ export function createNPCs(gs) {
 // Update NPCs (movement + animation)
 // ----------------------------------------
 export function updateNPCs(gs, dt) {
+    const phase = getTimePhase(gs.timeOfDay);
+
     gs.npcs.forEach(npc => {
-        npc.moveTimer += dt;
+        // Schedule-based visibility
+        if (phase === 'night') {
+            npc.visible = false;
+            return;
+        }
 
-        // Change direction every ~120 frames
-        if (npc.moveTimer % 120 < dt) {
-            if (Math.random() > 0.3) {
-                npc.direction = ['up', 'down', 'left', 'right'][Math.floor(Math.random() * 4)];
-            } else {
-                npc.direction = 'idle';
+        if (phase === 'dawn') {
+            // NPC wakes up at their individual wake time
+            if (gs.timeOfDay < npc.wakeTime) {
+                npc.visible = false;
+                return;
+            }
+            // Just woke up: snap to home and become visible
+            if (!npc.visible) {
+                npc.visible = true;
+                npc.x = npc.homeX;
+                npc.y = npc.homeY;
+                npc.behavior = 'pause';
+                npc.pauseTimer = 30 + Math.random() * 60;
             }
         }
 
-        if (npc.direction !== 'idle') {
-            npc.animTimer += dt;
-            if (npc.animTimer > 20) {
-                npc.animFrame = (npc.animFrame + 1) % 2;
-                npc.animTimer = 0;
+        if (phase === 'dusk') {
+            // Force NPCs to go home during dusk
+            if (npc.visible && npc.behavior !== 'return_home' && npc.behavior !== 'pause') {
+                npc.behavior = 'return_home';
             }
-
-            const moveSpeed = 0.01 * dt;
-            let newX = npc.x;
-            let newY = npc.y;
-
-            if (npc.direction === 'up') newY -= moveSpeed;
-            if (npc.direction === 'down') newY += moveSpeed;
-            if (npc.direction === 'left') newX -= moveSpeed;
-            if (npc.direction === 'right') newX += moveSpeed;
-
-            if (canNPCWalkOn(gs, newX, newY)) {
-                npc.x = newX;
-                npc.y = newY;
-            } else {
-                npc.direction = ['up', 'down', 'left', 'right'][Math.floor(Math.random() * 4)];
+            // Hide NPC once they arrive home
+            if (npc.visible) {
+                const distHome = Math.sqrt(
+                    Math.pow(npc.x - npc.homeX, 2) +
+                    Math.pow(npc.y - npc.homeY, 2)
+                );
+                if (distHome < 2 && npc.behavior === 'pause') {
+                    npc.visible = false;
+                    return;
+                }
             }
-        } else {
-            npc.animFrame = 0;
-            npc.animTimer = 0;
         }
+
+        if (phase === 'day' && !npc.visible) {
+            // Ensure NPCs are visible during day (safety net)
+            npc.visible = true;
+            npc.x = npc.homeX;
+            npc.y = npc.homeY;
+        }
+
+        if (!npc.visible) return;
+
+        updateNPCBehavior(npc, gs, dt);
+        updateNPCMovement(npc, gs, dt);
+        updateNPCAnimation(npc, gs, dt);
     });
 }
 
@@ -139,6 +445,8 @@ export function checkNearNPC(gs) {
     const talkDistance = 2;
 
     gs.npcs.forEach(npc => {
+        if (npc.visible === false) return;
+
         const distance = Math.sqrt(
             Math.pow(gs.player.x - npc.x, 2) +
             Math.pow(gs.player.y - npc.y, 2)
@@ -174,13 +482,6 @@ export function getDialogue(npcType) {
             "Mom said not to go too far...",
             "Look at that pretty butterfly!",
             "Tag, you're it! Hehe!"
-        ],
-        'assistant': [
-            "Good day. Can I help you?",
-            "I'm here to help the villagers.",
-            "If you need anything, let me know.",
-            "Everything seems in order today.",
-            "The shops are all open if you need supplies."
         ],
         'doctor': [
             "Hello! Are you feeling well?",
@@ -239,6 +540,8 @@ export function getDialogue(npcType) {
 // ----------------------------------------
 export function drawNPCs(ctx, gs) {
     gs.npcs.forEach(npc => {
+        if (npc.visible === false) return;
+
         const screenX = (npc.x - gs.camera.x) * TILE_SIZE;
         const screenY = (npc.y - gs.camera.y) * TILE_SIZE;
 
@@ -257,8 +560,20 @@ export function drawNPCs(ctx, gs) {
                 skinColor = '#f0d0b0'; clothesColor = '#DC143C'; hatColor = '#9370DB'; npcSize = size; break;
             case 'child':
                 skinColor = '#ffd5b5'; clothesColor = '#32CD32'; hatColor = '#FFD700'; npcSize = size * 0.75; break;
-            case 'assistant':
-                skinColor = '#e8b896'; clothesColor = '#2F4F4F'; hatColor = '#696969'; npcSize = size; break;
+            case 'farmer':
+                skinColor = '#f5c9a5'; clothesColor = '#228B22'; hatColor = '#8B6914'; npcSize = size; break;
+            case 'fisher':
+                skinColor = '#f0d0b0'; clothesColor = '#4169E1'; hatColor = '#1E90FF'; npcSize = size; break;
+            case 'blacksmith':
+                skinColor = '#e8b896'; clothesColor = '#2F2F2F'; hatColor = '#404040'; npcSize = size; break;
+            case 'merchant':
+                skinColor = '#f5c9a5'; clothesColor = '#8B008B'; hatColor = '#9370DB'; npcSize = size; break;
+            case 'doctor':
+                skinColor = '#f0d0b0'; clothesColor = '#F5F5F5'; hatColor = '#FF0000'; npcSize = size; break;
+            case 'elder':
+                skinColor = '#e0c0a0'; clothesColor = '#8B4513'; hatColor = '#654321'; npcSize = size; break;
+            case 'priest':
+                skinColor = '#f5d5b5'; clothesColor = '#1a1a1a'; hatColor = '#333333'; npcSize = size; break;
             default:
                 skinColor = '#f5d5b5'; clothesColor = '#556B2F'; hatColor = '#8B4513'; npcSize = size;
         }

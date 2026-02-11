@@ -4,19 +4,22 @@
 import {
     TILE_SIZE, VIEWPORT_TILES_X, VIEWPORT_TILES_Y,
     MAP_WIDTH, MAP_HEIGHT, PLAYER_DEFAULTS,
-    DIALOGUE_TIMEOUT, INTRO_DIALOGUES
+    DIALOGUE_TIMEOUT, INTRO_DIALOGUES,
+    QUICK_HEAL_HOLD_THRESHOLD,
+    TIME_SPEED, DAWN_START, DAWN_END, DUSK_END
 } from './constants.js';
 import { handlePlayerMovement, handleJump, updatePlayerAnimation } from './player.js';
 import { updateCamera } from './camera.js';
 import { createMap } from './map.js';
 import { createNPCs, updateNPCs, drawNPCs, checkNearNPC, drawIntroElder, createAnimals, updateAnimals, drawAnimals } from './npc.js';
 import { createEnemies, createTreasureChest, updateEnemies, drawEnemies } from './enemy.js';
-import { updateCombat, updatePotionEffects } from './combat.js';
+import { updateCombat, updatePotionEffects, performAttack } from './combat.js';
 import { checkNearHouse, checkNearBed, checkNearChest, createHouseInterior } from './house.js';
 import { createBoats, updateBoats, checkNearBoat } from './island.js';
 import { drawMap, drawBoats, drawTreasureChest, drawPlayer, drawAttack, drawShield, drawNightOverlay, drawSleepAnimation } from './renderer.js';
-import { drawUI, drawHelp, drawIntroDialogue, drawFullMap } from './ui.js';
+import { drawUI, drawHelp, drawIntroDialogue, drawFullMap, drawTitleScreen } from './ui.js';
 import { setupControls } from './input.js';
+import { saveGame, loadGame, hasSaveData, deleteSaveData } from './save.js';
 
 // ----------------------------------------
 // Create initial game state
@@ -25,6 +28,10 @@ function createGameState(canvas, ctx) {
     const gs = {
         canvas,
         ctx,
+
+        // Title screen
+        showTitleScreen: true,
+        titleScreenSelection: 0,
 
         // Config
         tileSize: TILE_SIZE,
@@ -63,9 +70,11 @@ function createGameState(canvas, ctx) {
         showMinimap: false,
         showHelp: false,
         showInventory: false,
+        inventoryTab: 0,  // 0=Weapons, 1=Food, 2=Items
 
         // Controls
         keys: {},
+        mouse: { x: 0, y: 0, leftDown: false, rightDown: false, leftClick: false, rightClick: false },
 
         // Map
         map: [],
@@ -87,6 +96,10 @@ function createGameState(canvas, ctx) {
         savedDesertPlayer: null,
         nearBoat: null,
 
+        // Minimap cache
+        minimapCache: null,
+        minimapCacheIsland: null,
+
         // House system
         insideHouse: null,
         houseInterior: null,
@@ -98,11 +111,16 @@ function createGameState(canvas, ctx) {
         nearNPC: null,
         currentDialogue: null,
         dialogueTimer: 0,
+        dialoguePersist: false,
+
+        // Quick heal
+        quickHealPressed: false,
+        quickHealTimer: 0,
 
         // Inventory & economy
         inventory: {},
         food: {},
-        money: 100,
+        money: 10,
         shopMode: false,
         currentShop: null,
 
@@ -115,7 +133,9 @@ function createGameState(canvas, ctx) {
         levelUpOptions: ['heart', 'gems'],
 
         // Day/night cycle
-        isNight: false,
+        timeOfDay: 7.0,          // Start at 7 AM
+        dayCount: 1,
+        isNight: false,           // Derived from timeOfDay
         nearBed: false,
         sleepAnim: {
             active: false,
@@ -123,7 +143,7 @@ function createGameState(canvas, ctx) {
             timer: 0,
             fadeDuration: 90,
             messageDuration: 120,
-            targetIsNight: false
+            wasDaytime: false
         },
 
         // Storage system
@@ -166,26 +186,128 @@ function startIntro(gs) {
         gs.insideHouse = playerHouse;
         createHouseInterior(gs, 'player');
 
-        // Position player inside house
-        gs.player.x = 9;
-        gs.player.y = 10;
+        // Phase 0: Player starts in bed
+        gs.introPhase = 0;
+        gs.player.x = 3;
+        gs.player.y = 3.5;
+        gs.player.direction = 'down';
 
-        // Add elder NPC for intro
-        gs.introElder = {
-            x: 9,
-            y: 5,
-            type: 'elder',
-            direction: 'down',
-            animFrame: 0,
-            animTimer: 0
-        };
+        // Elder not present yet (appears when door is opened)
+        gs.introElder = null;
     }
+}
+
+// ----------------------------------------
+// Start a new game (from title screen)
+// ----------------------------------------
+function startNewGame(gs) {
+    deleteSaveData();
+
+    // Generate world
+    createMap(gs);
+    createNPCs(gs);
+    createAnimals(gs);
+    createBoats(gs);
+    createEnemies(gs);
+    createTreasureChest(gs);
+
+    // Starting equipment in storage chest
+    gs.playerStorage['Wooden Sword'] = 1;
+    gs.playerStorage['Wooden Shield'] = 1;
+
+    // Setup controls
+    setupControls(gs);
+
+    // Start intro
+    startIntro(gs);
+}
+
+// ----------------------------------------
+// Continue saved game (from title screen)
+// ----------------------------------------
+function continueGame(gs) {
+    // Generate world fresh
+    createMap(gs);
+    createNPCs(gs);
+    createAnimals(gs);
+    createBoats(gs);
+    createEnemies(gs);
+    createTreasureChest(gs);
+
+    // Setup controls
+    setupControls(gs);
+
+    // Load saved state onto fresh world
+    loadGame(gs);
+}
+
+// ----------------------------------------
+// Setup title screen controls
+// ----------------------------------------
+function setupTitleScreenControls(gs) {
+    const handler = (e) => {
+        const key = e.key.toLowerCase();
+
+        // Navigate up
+        if (key === 'z' || key === 'arrowup') {
+            gs.titleScreenSelection = 0;
+            e.preventDefault();
+        }
+
+        // Navigate down
+        if (key === 's' || key === 'arrowdown') {
+            gs.titleScreenSelection = 1;
+            e.preventDefault();
+        }
+
+        // Confirm selection
+        if (key === 'enter' || key === 'e') {
+            if (gs.titleScreenSelection === 0) {
+                // New Game
+                gs.showTitleScreen = false;
+                window.removeEventListener('keydown', handler);
+                startNewGame(gs);
+            } else if (gs.titleScreenSelection === 1 && hasSaveData()) {
+                // Continue
+                gs.showTitleScreen = false;
+                window.removeEventListener('keydown', handler);
+                continueGame(gs);
+            }
+            e.preventDefault();
+        }
+
+        // Direct number keys
+        if (key === '1') {
+            gs.showTitleScreen = false;
+            window.removeEventListener('keydown', handler);
+            startNewGame(gs);
+            e.preventDefault();
+        }
+        if (key === '2' && hasSaveData()) {
+            gs.showTitleScreen = false;
+            window.removeEventListener('keydown', handler);
+            continueGame(gs);
+            e.preventDefault();
+        }
+    };
+
+    window.addEventListener('keydown', handler);
 }
 
 // ----------------------------------------
 // Update game logic
 // ----------------------------------------
 function update(gs, dt) {
+    // Advance time of day (skip during intro and sleep animation)
+    if (!gs.introActive && !gs.sleepAnim.active) {
+        gs.timeOfDay += TIME_SPEED * dt;
+        if (gs.timeOfDay >= 24.0) {
+            gs.timeOfDay -= 24.0;
+            gs.dayCount++;
+        }
+        gs.isNight = (gs.timeOfDay >= DUSK_END || gs.timeOfDay < DAWN_START);
+    }
+
     handlePlayerMovement(gs, dt);
     handleJump(gs, dt);
     updateCamera(gs);
@@ -202,36 +324,70 @@ function update(gs, dt) {
     checkNearNPC(gs);
     updatePotionEffects(gs, dt);
 
+    // Intro phase 1: auto-detect when player reaches the door
+    if (gs.introActive && gs.introPhase === 1 && gs.player.y >= 11.5) {
+        gs.introPhase = 2;
+    }
+
     // Sleep animation state machine
     if (gs.sleepAnim.active) {
         const anim = gs.sleepAnim;
         anim.timer += dt;
 
         if (anim.phase === 1 && anim.timer >= anim.fadeDuration) {
-            // Fade-to-black complete → show message, toggle day/night
+            // Fade-to-black complete -> show message, advance to morning
             anim.phase = 2;
             anim.timer = 0;
-            gs.isNight = anim.targetIsNight;
+            gs.timeOfDay = DAWN_END;  // Wake up at 7:00 AM
+            gs.dayCount++;
+            gs.isNight = false;
         } else if (anim.phase === 2 && anim.timer >= anim.messageDuration) {
-            // Message shown → fade from black
+            // Message shown -> fade from black
             anim.phase = 3;
             anim.timer = 0;
         } else if (anim.phase === 3 && anim.timer >= anim.fadeDuration) {
-            // Fade-from-black complete → done
+            // Fade-from-black complete -> done, auto-save
             anim.active = false;
             anim.phase = 0;
             anim.timer = 0;
+            saveGame(gs);
+        }
+    }
+
+    // Shield blocking (right mouse button only)
+    const hasShield = (gs.weapons['Rusty Shield'] || gs.weapons['Wooden Shield']) && !gs.player.shieldBroken;
+    gs.player.isBlocking = gs.mouse.rightDown && hasShield;
+
+    // Mouse left-click attack
+    if (gs.mouse.leftClick && !gs.player.isAttacking && !gs.introActive &&
+        (gs.weapons['Rusty Sword'] || gs.weapons['Wooden Sword']) &&
+        !gs.showInventory && !gs.shopMode && !gs.storageOpen && !gs.showHelp && !gs.showMinimap) {
+        gs.player.isAttacking = true;
+        gs.player.attackTimer = gs.player.attackDuration;
+        performAttack(gs);
+    }
+
+    // Quick heal hold detection
+    if (gs.quickHealPressed) {
+        gs.quickHealTimer += dt;
+        if (gs.quickHealTimer >= QUICK_HEAL_HOLD_THRESHOLD) {
+            gs.quickHealPressed = false;
+            gs.showInventory = true;
+            gs.inventoryTab = 1; // Food tab
         }
     }
 
     // Dialogue timer
     if (gs.currentDialogue) {
-        gs.dialogueTimer += dt;
-        if (gs.dialogueTimer > DIALOGUE_TIMEOUT) {
-            gs.currentDialogue = null;
-            gs.dialogueTimer = 0;
+        if (!gs.dialoguePersist) {
+            gs.dialogueTimer += dt;
+            if (gs.dialogueTimer > DIALOGUE_TIMEOUT) {
+                gs.currentDialogue = null;
+                gs.dialogueTimer = 0;
+            }
         }
     }
+
 }
 
 // ----------------------------------------
@@ -275,22 +431,11 @@ export function initGame() {
     canvas.width = TILE_SIZE * VIEWPORT_TILES_X;   // 960px
     canvas.height = TILE_SIZE * VIEWPORT_TILES_Y;   // 720px
 
-    // Create game state
+    // Create game state (title screen mode)
     const gs = createGameState(canvas, ctx);
 
-    // Generate world
-    createMap(gs);
-    createNPCs(gs);
-    createAnimals(gs);
-    createBoats(gs);
-    createEnemies(gs);
-    createTreasureChest(gs);
-
-    // Setup controls
-    setupControls(gs);
-
-    // Start intro
-    startIntro(gs);
+    // Setup title screen controls
+    setupTitleScreenControls(gs);
 
     // DeltaTime game loop
     // dt normalized so 1.0 = one frame at 60fps
@@ -300,8 +445,20 @@ export function initGame() {
         const dt = Math.min((now - lastTime) / 16.667, 3);
         lastTime = now;
 
-        update(gs, dt);
-        draw(gs);
+        // Hide cursor during gameplay, show when a menu is open
+        const menuOpen = gs.showTitleScreen || gs.showInventory || gs.shopMode ||
+            gs.storageOpen || gs.showHelp || gs.showMinimap || gs.levelUpChoice;
+        canvas.style.cursor = menuOpen ? 'default' : 'none';
+
+        if (gs.showTitleScreen) {
+            drawTitleScreen(ctx, gs);
+        } else {
+            update(gs, dt);
+            draw(gs);
+            // Reset mouse click pulses after both update and draw have consumed them
+            gs.mouse.leftClick = false;
+            gs.mouse.rightClick = false;
+        }
 
         requestAnimationFrame(gameLoop);
     };
