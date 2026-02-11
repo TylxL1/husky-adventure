@@ -141,7 +141,11 @@ export const DIAGONAL_FACTOR = 0.707;
 // ========================================
 // CAMERA
 // ========================================
-export const CAMERA_SMOOTHING = 0.12;
+export const CAMERA_SMOOTHING_SLOW = 0.22;   // Smoothing when walking (tight follow)
+export const CAMERA_SMOOTHING_FAST = 0.12;   // Smoothing with speed potion (looser, avoids jitter)
+export const CAMERA_ZOOM_NORMAL = 2.0;       // 2x zoom when walking normally
+export const CAMERA_ZOOM_SPEED = 1.3;        // Zoom out with speed potion (still closer than original)
+export const CAMERA_ZOOM_SMOOTHING = 0.05;   // Smooth zoom transition speed
 
 // ========================================
 // TIMING (frames at 60fps)

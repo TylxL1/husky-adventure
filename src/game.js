@@ -63,6 +63,7 @@ function createGameState(canvas, ctx) {
         camera: {
             x: 0,
             y: 0,
+            zoom: 2.0,
             smoothing: 0.12
         },
 
@@ -395,6 +396,7 @@ function update(gs, dt) {
 // ----------------------------------------
 function draw(gs) {
     const ctx = gs.ctx;
+    const zoom = gs.camera.zoom;
 
     ctx.fillStyle = '#0a0a0a';
     ctx.fillRect(0, 0, gs.canvas.width, gs.canvas.height);
@@ -402,6 +404,10 @@ function draw(gs) {
     if (gs.showMinimap) {
         drawFullMap(ctx, gs);
     } else {
+        // World rendering with camera zoom
+        ctx.save();
+        ctx.scale(zoom, zoom);
+
         drawMap(ctx, gs);
         drawBoats(ctx, gs);
         drawNPCs(ctx, gs);
@@ -413,6 +419,10 @@ function draw(gs) {
         drawShield(ctx, gs);
         drawNightOverlay(ctx, gs);
         drawIntroElder(ctx, gs);
+
+        ctx.restore();
+
+        // UI rendering (not zoomed)
         drawUI(ctx, gs);
         drawIntroDialogue(ctx, gs);
         drawHelp(ctx, gs);
