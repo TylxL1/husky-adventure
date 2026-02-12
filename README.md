@@ -1,6 +1,4 @@
-# Husky Zelda Game
-
-A top-down Zelda-style adventure game with enhanced pixel art aesthetics, built in pure HTML5 Canvas.
+# Husky Adventure
 
 ## How to Play
 
