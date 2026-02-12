@@ -177,20 +177,13 @@ export const DUSK_END = 20.0;            // 8:00 PM
 export const NIGHT_OVERLAY_MAX = 0.55;   // max darkness opacity
 
 export function getTimePhase(time) {
-    if (time >= DAWN_START && time < DAWN_END) return 'dawn';
     if (time >= DAWN_END && time < DUSK_START) return 'day';
-    if (time >= DUSK_START && time < DUSK_END) return 'dusk';
     return 'night';
 }
 
 export function getNightOpacity(time) {
-    if (time >= DAWN_END && time < DUSK_START) return 0;  // Day
-    if (time >= DUSK_END || time < DAWN_START) return NIGHT_OVERLAY_MAX;  // Night
-    if (time >= DAWN_START && time < DAWN_END) {
-        return NIGHT_OVERLAY_MAX * (1 - (time - DAWN_START) / (DAWN_END - DAWN_START));
-    }
-    // Dusk
-    return NIGHT_OVERLAY_MAX * ((time - DUSK_START) / (DUSK_END - DUSK_START));
+    if (time >= DAWN_END && time < DUSK_START) return 0;
+    return NIGHT_OVERLAY_MAX;
 }
 
 // ========================================

@@ -1,7 +1,7 @@
 // ========================================
 // NPC - Creation, AI, dialogues, drawing
 // ========================================
-import { TILE_SIZE, TILE_WATER, TILE_ROCK, TILE_TREE, TILE_HOUSE, TILE_DOCK, getTimePhase } from './constants.js';
+import { TILE_SIZE, TILE_WATER, TILE_ROCK, TILE_TREE, TILE_HOUSE, TILE_DOCK } from './constants.js';
 import { canNPCWalkOn } from './player.js';
 import { lightenColor, darkenColor } from './renderer.js';
 
@@ -61,6 +61,7 @@ export function createNPCs(gs) {
 
         if (validPosition) {
             const type = npcTypes[i % npcTypes.length];
+            const hp = type === 'child' ? 4 : 6;
             gs.npcs.push({
                 x, y, type,
                 homeX: x, homeY: y,
@@ -73,7 +74,10 @@ export function createNPCs(gs) {
                 moveTimer: Math.floor(Math.random() * 60),
                 idleTime: Math.random() * 100 + 50,
                 visible: true,
-                wakeTime: 5.5 + Math.random()  // Generic NPCs: 5:30-6:30
+                wakeTime: 5.5 + Math.random(),  // Generic NPCs: 5:30-6:30
+                health: hp, maxHealth: hp,
+                invincible: false, invincibleTimer: 0,
+                knockbackX: 0, knockbackY: 0
             });
         }
     }
@@ -97,6 +101,7 @@ export function createNPCs(gs) {
     Object.entries(roleMap).forEach(([houseType, npcType]) => {
         const house = gs.houses.find(h => h.type === houseType);
         if (!house) return;
+        const hp = 8;
         gs.npcs.push({
             x: house.x + 3,
             y: house.y + 2,
@@ -112,7 +117,10 @@ export function createNPCs(gs) {
             moveTimer: Math.floor(Math.random() * 60),
             idleTime: Math.random() * 100 + 50,
             visible: true,
-            wakeTime: wakeTimeByRole[npcType] || 6.0
+            wakeTime: wakeTimeByRole[npcType] || 6.0,
+            health: hp, maxHealth: hp,
+            invincible: false, invincibleTimer: 0,
+            knockbackX: 0, knockbackY: 0
         });
     });
 }
@@ -379,57 +387,35 @@ function updateNPCAnimation(npc, gs, dt) {
 // Update NPCs (movement + animation)
 // ----------------------------------------
 export function updateNPCs(gs, dt) {
-    const phase = getTimePhase(gs.timeOfDay);
-
     gs.npcs.forEach(npc => {
-        // Schedule-based visibility
-        if (phase === 'night') {
-            npc.visible = false;
-            return;
-        }
-
-        if (phase === 'dawn') {
-            // NPC wakes up at their individual wake time
-            if (gs.timeOfDay < npc.wakeTime) {
-                npc.visible = false;
-                return;
-            }
-            // Just woke up: snap to home and become visible
-            if (!npc.visible) {
-                npc.visible = true;
-                npc.x = npc.homeX;
-                npc.y = npc.homeY;
-                npc.behavior = 'pause';
-                npc.pauseTimer = 30 + Math.random() * 60;
-            }
-        }
-
-        if (phase === 'dusk') {
-            // Force NPCs to go home during dusk
-            if (npc.visible && npc.behavior !== 'return_home' && npc.behavior !== 'pause') {
-                npc.behavior = 'return_home';
-            }
-            // Hide NPC once they arrive home
-            if (npc.visible) {
-                const distHome = Math.sqrt(
-                    Math.pow(npc.x - npc.homeX, 2) +
-                    Math.pow(npc.y - npc.homeY, 2)
-                );
-                if (distHome < 2 && npc.behavior === 'pause') {
-                    npc.visible = false;
-                    return;
-                }
-            }
-        }
-
-        if (phase === 'day' && !npc.visible) {
-            // Ensure NPCs are visible during day (safety net)
+        // Ensure NPC is always visible
+        if (!npc.visible) {
             npc.visible = true;
             npc.x = npc.homeX;
             npc.y = npc.homeY;
         }
 
-        if (!npc.visible) return;
+        // Invincibility timer
+        if (npc.invincible) {
+            npc.invincibleTimer -= dt;
+            if (npc.invincibleTimer <= 0) {
+                npc.invincible = false;
+            }
+        }
+
+        // Apply knockback
+        if (npc.knockbackX || npc.knockbackY) {
+            const newX = npc.x + npc.knockbackX * dt;
+            const newY = npc.y + npc.knockbackY * dt;
+            if (canNPCWalkOn(gs, newX, newY)) {
+                npc.x = newX;
+                npc.y = newY;
+            }
+            npc.knockbackX *= Math.pow(0.85, dt);
+            npc.knockbackY *= Math.pow(0.85, dt);
+            if (Math.abs(npc.knockbackX) < 0.001) npc.knockbackX = 0;
+            if (Math.abs(npc.knockbackY) < 0.001) npc.knockbackY = 0;
+        }
 
         updateNPCBehavior(npc, gs, dt);
         updateNPCMovement(npc, gs, dt);
@@ -582,6 +568,24 @@ export function drawNPCs(ctx, gs) {
         const adjustedPx = px + (size - npcSize) / 2;
         const adjustedPy = py + (size - npcSize);
 
+        // Invincibility flash — skip drawing every other frame
+        if (npc.invincible && Math.floor(Date.now() / 80) % 2 === 0) {
+            // Still draw health bar even during flash
+            if (npc.health < npc.maxHealth) {
+                const barWidth = npcSize;
+                const barHeight = 4;
+                const barX = screenX + (TILE_SIZE - barWidth) / 2;
+                const barY = screenY - 2;
+                ctx.fillStyle = '#333';
+                ctx.fillRect(barX - 1, barY - 1, barWidth + 2, barHeight + 2);
+                ctx.fillStyle = '#ff0000';
+                ctx.fillRect(barX, barY, barWidth, barHeight);
+                ctx.fillStyle = '#00ff00';
+                ctx.fillRect(barX, barY, barWidth * (npc.health / npc.maxHealth), barHeight);
+            }
+            return;
+        }
+
         // Shadow
         ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
         ctx.beginPath();
@@ -611,6 +615,20 @@ export function drawNPCs(ctx, gs) {
         const legOffset = npc.animFrame * 2 * sizeRatio;
         ctx.fillRect(adjustedPx + 10 * sizeRatio, adjustedPy + 26 * sizeRatio - legOffset, 3 * sizeRatio, 4 * sizeRatio);
         ctx.fillRect(adjustedPx + 17 * sizeRatio, adjustedPy + 26 * sizeRatio + legOffset, 3 * sizeRatio, 4 * sizeRatio);
+
+        // Health bar (only when damaged)
+        if (npc.health < npc.maxHealth) {
+            const barWidth = npcSize;
+            const barHeight = 4;
+            const barX = screenX + (TILE_SIZE - barWidth) / 2;
+            const barY = screenY - 2;
+            ctx.fillStyle = '#333';
+            ctx.fillRect(barX - 1, barY - 1, barWidth + 2, barHeight + 2);
+            ctx.fillStyle = '#ff0000';
+            ctx.fillRect(barX, barY, barWidth, barHeight);
+            ctx.fillStyle = '#00ff00';
+            ctx.fillRect(barX, barY, barWidth * (npc.health / npc.maxHealth), barHeight);
+        }
     });
 }
 

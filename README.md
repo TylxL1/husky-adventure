@@ -1,12 +1,14 @@
 # Husky Adventure
 
+A top-down adventure game with enhanced pixel art aesthetics, built in pure HTML5 Canvas.
+
 ## How to Play
 
 ES6 modules require a local web server (file:// won't work due to CORS). Use one of these methods:
 
 ```bash
 # Python
-cd husky-donjon-game
+cd husky-adventure
 python -m http.server 8000
 # Then open http://localhost:8000
 
@@ -25,6 +27,7 @@ npx serve .
 | **Q** | Move left |
 | **S** | Move down |
 | **D** | Move right |
+| **Shift** | Sprint (hold) |
 | **Space** | Jump |
 | **E** | Interact (talk, enter houses, shop, open chest, travel) |
 | **F** | Attack with sword (requires Rusty Sword) |
@@ -51,7 +54,7 @@ npx serve .
 ## Project Structure
 
 ```
-husky-donjon-game/
+husky-adventure/
   index.html           Entry point (ES6 module loader)
   style.css            Minimal styling
   README.md            This file

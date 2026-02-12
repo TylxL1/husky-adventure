@@ -1081,6 +1081,7 @@ export function drawHelp(ctx, gs) {
             { key: 'Q', action: 'Move left' },
             { key: 'S', action: 'Move down' },
             { key: 'D', action: 'Move right' },
+            { key: 'SHIFT', action: 'Sprint (hold)' },
             { key: 'SPACE', action: 'Jump' }
         ]},
         { category: 'COMBAT', keys: [

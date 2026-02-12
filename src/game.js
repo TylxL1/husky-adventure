@@ -6,7 +6,8 @@ import {
     MAP_WIDTH, MAP_HEIGHT, PLAYER_DEFAULTS,
     DIALOGUE_TIMEOUT, INTRO_DIALOGUES,
     QUICK_HEAL_HOLD_THRESHOLD,
-    TIME_SPEED, DAWN_START, DAWN_END, DUSK_END
+    TIME_SPEED, DAWN_START, DAWN_END, DUSK_END,
+    CAMERA_ZOOM_NORMAL
 } from './constants.js';
 import { handlePlayerMovement, handleJump, updatePlayerAnimation } from './player.js';
 import { updateCamera } from './camera.js';
@@ -63,8 +64,8 @@ function createGameState(canvas, ctx) {
         camera: {
             x: 0,
             y: 0,
-            zoom: 2.0,
-            smoothing: 0.12
+            smoothing: 0.12,
+            zoom: CAMERA_ZOOM_NORMAL
         },
 
         // UI toggles

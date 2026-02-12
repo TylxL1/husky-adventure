@@ -40,6 +40,8 @@ export function canWalkOn(gs, x, y) {
 }
 
 export function canNPCWalkOn(gs, x, y) {
+    if (isNaN(x) || isNaN(y)) return false;
+
     const tileX = Math.floor(x);
     const tileY = Math.floor(y);
 
@@ -72,9 +74,13 @@ export function handlePlayerMovement(gs, dt) {
         inputY *= DIAGONAL_FACTOR;
     }
 
+    // Sprint multiplier (Shift key)
+    const sprintMultiplier = gs.keys['shift'] ? 1.8 : 1.0;
+
     if (inputX !== 0 || inputY !== 0) {
-        gs.player.velocityX += inputX * gs.player.acceleration * dt;
-        gs.player.velocityY += inputY * gs.player.acceleration * dt;
+        const accelBoost = gs.keys['shift'] ? 1.5 : 1.0;
+        gs.player.velocityX += inputX * gs.player.acceleration * accelBoost * dt;
+        gs.player.velocityY += inputY * gs.player.acceleration * accelBoost * dt;
     }
 
     gs.player.velocityX *= Math.pow(gs.player.momentum, dt);
@@ -84,8 +90,8 @@ export function handlePlayerMovement(gs, dt) {
         gs.player.velocityX ** 2 + gs.player.velocityY ** 2
     );
 
-    // Speed potion boost
-    const speedMultiplier = gs.activeEffects.speed.active ? 2.0 : 1.0;
+    // Speed potion boost + sprint
+    const speedMultiplier = (gs.activeEffects.speed.active ? 2.0 : 1.0) * sprintMultiplier;
     const effectiveMaxSpeed = gs.player.maxSpeed * speedMultiplier;
 
     if (currentSpeed > effectiveMaxSpeed) {

@@ -161,9 +161,7 @@ export function createHouseInterior(gs, type) {
     // Reset interior NPCs
     gs.npcs = [];
 
-    // Shop types that close at night (no shopkeeper spawned)
-    const shopTypes = ['farmer', 'fisher', 'merchant', 'doctor', 'blacksmith'];
-    const isShopClosed = gs.isNight && shopTypes.includes(type);
+    // Shops are always open
 
     // Decorate based on house type
     switch (type) {
@@ -207,12 +205,14 @@ export function createHouseInterior(gs, type) {
             // Barrels
             gs.map[8][6] = TILE_BARREL; gs.map[8][11] = TILE_BARREL;
             // NPC farmer (behind counter)
-            if (!isShopClosed) {
-                gs.npcs.push({
-                    x: 8, y: 3, type: 'farmer', direction: 'down',
-                    animFrame: 0, animTimer: 0, moveTimer: 0, idleTime: 999999, visible: true
-                });
-            }
+            gs.npcs.push({
+                x: 8, y: 3, type: 'farmer', direction: 'down',
+                homeX: 8, homeY: 3, targetX: null, targetY: null,
+                behavior: 'pause', pauseTimer: 999999, wanderRadius: 3, wakeTime: 5.0,
+                animFrame: 0, animTimer: 0, moveTimer: 0, idleTime: 999999, visible: true,
+                health: 8, maxHealth: 8, invincible: false, invincibleTimer: 0,
+                knockbackX: 0, knockbackY: 0
+            });
             break;
 
         case 'fisher':
@@ -236,12 +236,14 @@ export function createHouseInterior(gs, type) {
             // Chest (behind counter)
             gs.map[3][12] = TILE_CHEST;
             // NPC fisher (behind counter)
-            if (!isShopClosed) {
-                gs.npcs.push({
-                    x: 8, y: 3, type: 'fisher', direction: 'down',
-                    animFrame: 0, animTimer: 0, moveTimer: 0, idleTime: 999999, visible: true
-                });
-            }
+            gs.npcs.push({
+                x: 8, y: 3, type: 'fisher', direction: 'down',
+                homeX: 8, homeY: 3, targetX: null, targetY: null,
+                behavior: 'pause', pauseTimer: 999999, wanderRadius: 3, wakeTime: 5.0,
+                animFrame: 0, animTimer: 0, moveTimer: 0, idleTime: 999999, visible: true,
+                health: 8, maxHealth: 8, invincible: false, invincibleTimer: 0,
+                knockbackX: 0, knockbackY: 0
+            });
             break;
 
         case 'merchant':
@@ -265,12 +267,14 @@ export function createHouseInterior(gs, type) {
             gs.map[8][5] = TILE_POTION_SHELF; gs.map[9][5] = TILE_POTION_SHELF;
             gs.map[8][12] = TILE_POTION_SHELF; gs.map[9][12] = TILE_POTION_SHELF;
             // NPC merchant (behind counter)
-            if (!isShopClosed) {
-                gs.npcs.push({
-                    x: 8, y: 3, type: 'merchant', direction: 'down',
-                    animFrame: 0, animTimer: 0, moveTimer: 0, idleTime: 999999, visible: true
-                });
-            }
+            gs.npcs.push({
+                x: 8, y: 3, type: 'merchant', direction: 'down',
+                homeX: 8, homeY: 3, targetX: null, targetY: null,
+                behavior: 'pause', pauseTimer: 999999, wanderRadius: 3, wakeTime: 5.0,
+                animFrame: 0, animTimer: 0, moveTimer: 0, idleTime: 999999, visible: true,
+                health: 8, maxHealth: 8, invincible: false, invincibleTimer: 0,
+                knockbackX: 0, knockbackY: 0
+            });
             break;
 
         case 'elder':
@@ -297,7 +301,11 @@ export function createHouseInterior(gs, type) {
             // NPC elder
             gs.npcs.push({
                 x: 12, y: 8, type: 'elder', direction: 'down',
-                animFrame: 0, animTimer: 0, moveTimer: 0, idleTime: 999999
+                homeX: 12, homeY: 8, targetX: null, targetY: null,
+                behavior: 'pause', pauseTimer: 999999, wanderRadius: 3, wakeTime: 5.0,
+                animFrame: 0, animTimer: 0, moveTimer: 0, idleTime: 999999, visible: true,
+                health: 8, maxHealth: 8, invincible: false, invincibleTimer: 0,
+                knockbackX: 0, knockbackY: 0
             });
             break;
 
@@ -322,12 +330,14 @@ export function createHouseInterior(gs, type) {
             // Chest (behind counter)
             gs.map[3][8] = TILE_CHEST;
             // NPC doctor (behind counter)
-            if (!isShopClosed) {
-                gs.npcs.push({
-                    x: 8, y: 3, type: 'doctor', direction: 'down',
-                    animFrame: 0, animTimer: 0, moveTimer: 0, idleTime: 999999, visible: true
-                });
-            }
+            gs.npcs.push({
+                x: 8, y: 3, type: 'doctor', direction: 'down',
+                homeX: 8, homeY: 3, targetX: null, targetY: null,
+                behavior: 'pause', pauseTimer: 999999, wanderRadius: 3, wakeTime: 5.0,
+                animFrame: 0, animTimer: 0, moveTimer: 0, idleTime: 999999, visible: true,
+                health: 8, maxHealth: 8, invincible: false, invincibleTimer: 0,
+                knockbackX: 0, knockbackY: 0
+            });
             break;
 
         case 'blacksmith':
@@ -352,12 +362,14 @@ export function createHouseInterior(gs, type) {
             // Chest (behind counter)
             gs.map[3][8] = TILE_CHEST;
             // NPC blacksmith (behind counter)
-            if (!isShopClosed) {
-                gs.npcs.push({
-                    x: 8, y: 3, type: 'blacksmith', direction: 'down',
-                    animFrame: 0, animTimer: 0, moveTimer: 0, idleTime: 999999, visible: true
-                });
-            }
+            gs.npcs.push({
+                x: 8, y: 3, type: 'blacksmith', direction: 'down',
+                homeX: 8, homeY: 3, targetX: null, targetY: null,
+                behavior: 'pause', pauseTimer: 999999, wanderRadius: 3, wakeTime: 5.0,
+                animFrame: 0, animTimer: 0, moveTimer: 0, idleTime: 999999, visible: true,
+                health: 8, maxHealth: 8, invincible: false, invincibleTimer: 0,
+                knockbackX: 0, knockbackY: 0
+            });
             break;
 
         case 'church':
@@ -378,7 +390,11 @@ export function createHouseInterior(gs, type) {
             // NPC priest (in front of altar)
             gs.npcs.push({
                 x: 8, y: 4, type: 'priest', direction: 'down',
-                animFrame: 0, animTimer: 0, moveTimer: 0, idleTime: 999999
+                homeX: 8, homeY: 4, targetX: null, targetY: null,
+                behavior: 'pause', pauseTimer: 999999, wanderRadius: 3, wakeTime: 5.0,
+                animFrame: 0, animTimer: 0, moveTimer: 0, idleTime: 999999, visible: true,
+                health: 8, maxHealth: 8, invincible: false, invincibleTimer: 0,
+                knockbackX: 0, knockbackY: 0
             });
             break;
 
@@ -405,7 +421,11 @@ export function createHouseInterior(gs, type) {
             // NPC
             gs.npcs.push({
                 x: 12, y: 8, type: 'villager', direction: 'down',
-                animFrame: 0, animTimer: 0, moveTimer: 0, idleTime: 999999
+                homeX: 12, homeY: 8, targetX: null, targetY: null,
+                behavior: 'pause', pauseTimer: 999999, wanderRadius: 3, wakeTime: 5.0,
+                animFrame: 0, animTimer: 0, moveTimer: 0, idleTime: 999999, visible: true,
+                health: 8, maxHealth: 8, invincible: false, invincibleTimer: 0,
+                knockbackX: 0, knockbackY: 0
             });
             break;
 
@@ -430,7 +450,11 @@ export function createHouseInterior(gs, type) {
             // NPC
             gs.npcs.push({
                 x: 12, y: 8, type: 'villager', direction: 'down',
-                animFrame: 0, animTimer: 0, moveTimer: 0, idleTime: 999999
+                homeX: 12, homeY: 8, targetX: null, targetY: null,
+                behavior: 'pause', pauseTimer: 999999, wanderRadius: 3, wakeTime: 5.0,
+                animFrame: 0, animTimer: 0, moveTimer: 0, idleTime: 999999, visible: true,
+                health: 8, maxHealth: 8, invincible: false, invincibleTimer: 0,
+                knockbackX: 0, knockbackY: 0
             });
             break;
 
@@ -457,7 +481,11 @@ export function createHouseInterior(gs, type) {
             // NPC
             gs.npcs.push({
                 x: 12, y: 8, type: 'villager', direction: 'down',
-                animFrame: 0, animTimer: 0, moveTimer: 0, idleTime: 999999
+                homeX: 12, homeY: 8, targetX: null, targetY: null,
+                behavior: 'pause', pauseTimer: 999999, wanderRadius: 3, wakeTime: 5.0,
+                animFrame: 0, animTimer: 0, moveTimer: 0, idleTime: 999999, visible: true,
+                health: 8, maxHealth: 8, invincible: false, invincibleTimer: 0,
+                knockbackX: 0, knockbackY: 0
             });
             break;
     }

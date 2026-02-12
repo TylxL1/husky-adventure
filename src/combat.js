@@ -171,8 +171,44 @@ export function performAttack(gs) {
         gs.enemies.splice(enemiesToRemove[i], 1);
     }
 
+    // --- NPC damage ---
+    const npcsToRemove = [];
+    gs.npcs.forEach((npc, index) => {
+        if (!npc.visible || npc.invincible) return;
+
+        const distX = attackX - npc.x;
+        const distY = attackY - npc.y;
+        const distance = Math.sqrt(distX * distX + distY * distY);
+
+        if (distance < 1.5) {
+            npc.health -= damage;
+            npc.invincible = true;
+            npc.invincibleTimer = 30;
+
+            // Knockback away from player
+            if (distance > 0) {
+                const kbX = (npc.x - gs.player.x);
+                const kbY = (npc.y - gs.player.y);
+                const kbDist = Math.sqrt(kbX * kbX + kbY * kbY);
+                npc.knockbackX = (kbX / kbDist) * 0.15;
+                npc.knockbackY = (kbY / kbDist) * 0.15;
+            }
+
+            if (npc.health <= 0) {
+                npcsToRemove.push(index);
+                gs.currentDialogue = `${npc.type} defeated...`;
+                gs.dialogueTimer = 0;
+            }
+        }
+    });
+
+    // Remove dead NPCs (reverse order)
+    for (let i = npcsToRemove.length - 1; i >= 0; i--) {
+        gs.npcs.splice(npcsToRemove[i], 1);
+    }
+
     // Auto-save after combat kills
-    if (enemiesToRemove.length > 0) {
+    if (enemiesToRemove.length > 0 || npcsToRemove.length > 0) {
         saveGame(gs);
     }
 }

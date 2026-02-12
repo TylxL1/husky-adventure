@@ -13,8 +13,7 @@ import {
     TILE_SNOW, TILE_ICE, TILE_PINE_TREE, TILE_MOUNTAIN,
     TILE_FENCE,
     JUMP_VISUAL_SCALE,
-    getNightOpacity, getTimePhase,
-    DAWN_START, DAWN_END, DUSK_START, DUSK_END
+    getNightOpacity, getTimePhase
 } from './constants.js';
 
 // ========================================
@@ -760,8 +759,8 @@ export function drawTile(ctx, tile, screenX, screenY, x, y, gs) {
 }
 
 export function drawMap(ctx, gs) {
-    const startX = Math.floor(gs.camera.x);
-    const startY = Math.floor(gs.camera.y);
+    const startX = Math.max(0, Math.floor(gs.camera.x));
+    const startY = Math.max(0, Math.floor(gs.camera.y));
     const endX = Math.min(startX + gs.viewportTilesX + 2, gs.mapWidth);
     const endY = Math.min(startY + gs.viewportTilesY + 2, gs.mapHeight);
 
@@ -1127,35 +1126,12 @@ export function drawNightOverlay(ctx, gs) {
     nctx.fillStyle = `rgba(10, 15, 40, ${nightOpacity})`;
     nctx.fillRect(0, 0, w, h);
 
-    // Warm sunrise/sunset tint during transitions
-    if (phase === 'dawn') {
-        const t = (gs.timeOfDay - DAWN_START) / (DAWN_END - DAWN_START);
-        // Peak warmth at t=0.5 (around 6:00 AM)
-        const warmth = Math.sin(t * Math.PI) * 0.12;
-        if (warmth > 0) {
-            nctx.globalCompositeOperation = 'lighter';
-            nctx.fillStyle = `rgba(255, 140, 50, ${warmth})`;
-            nctx.fillRect(0, 0, w, h);
-            nctx.globalCompositeOperation = 'source-over';
-        }
-    } else if (phase === 'dusk') {
-        const t = (gs.timeOfDay - DUSK_START) / (DUSK_END - DUSK_START);
-        // Peak warmth at t=0.5 (around 7:00 PM), then fade to blue
-        const warmth = Math.sin(t * Math.PI) * 0.12;
-        if (warmth > 0) {
-            nctx.globalCompositeOperation = 'lighter';
-            nctx.fillStyle = `rgba(255, 100, 30, ${warmth})`;
-            nctx.fillRect(0, 0, w, h);
-            nctx.globalCompositeOperation = 'source-over';
-        }
-    }
-
     // Punch light holes using destination-out (scaled by opacity)
     if (nightOpacity > 0.05) {
         nctx.globalCompositeOperation = 'destination-out';
 
-        const startX = Math.floor(gs.camera.x);
-        const startY = Math.floor(gs.camera.y);
+        const startX = Math.max(0, Math.floor(gs.camera.x));
+        const startY = Math.max(0, Math.floor(gs.camera.y));
         const endX = Math.min(startX + gs.viewportTilesX + 2, gs.mapWidth);
         const endY = Math.min(startY + gs.viewportTilesY + 2, gs.mapHeight);
 
